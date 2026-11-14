@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { PoseLandmarker } from "@mediapipe/tasks-vision";
-import { elbowAngle, type Arm, type TrackingFrame } from "./core";
+import {
+  armTrackingMessage,
+  elbowAngle,
+  type Arm,
+  type TrackingFrame,
+} from "./core";
+import {FRAME_MAX_AGE_MS} from "./calibration";
 const EMPTY: TrackingFrame = {
   valid: false,
   angle: null,
@@ -21,6 +27,9 @@ export function useTracking(arm: Arm) {
     generation = useRef(0),
     armRef = useRef(arm);
   armRef.current = arm;
+  useEffect(() => {
+    setFrame({ ...EMPTY, message: `Finding your ${arm} arm…` });
+  }, [arm]);
   const stop = useCallback(() => {
     generation.current++;
     if (timer.current) clearTimeout(timer.current);
@@ -47,8 +56,8 @@ export function useTracking(arm: Arm) {
       pending = await navigator.mediaDevices.getUserMedia({
         audio: false,
         video: {
-          width: { ideal: 640 },
-          height: { ideal: 480 },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
           facingMode: "user",
         },
       });
@@ -67,17 +76,27 @@ export function useTracking(arm: Arm) {
       const { FilesetResolver, PoseLandmarker } =
         await import("@mediapipe/tasks-vision");
       const files = await FilesetResolver.forVisionTasks("/mediapipe/wasm");
-      pendingModel = await PoseLandmarker.createFromOptions(files, {
-        baseOptions: {
-          modelAssetPath: "/models/pose_landmarker_lite.task",
-          delegate: "CPU",
-        },
-        runningMode: "VIDEO",
-        numPoses: 1,
-        minPoseDetectionConfidence: 0.65,
-        minPosePresenceConfidence: 0.65,
-        minTrackingConfidence: 0.65,
-      });
+      const createModel = (delegate: "GPU" | "CPU") =>
+        PoseLandmarker.createFromOptions(files, {
+          baseOptions: {
+            modelAssetPath: "/models/pose_landmarker_full.task",
+            delegate,
+          },
+          runningMode: "VIDEO",
+          numPoses: 1,
+          minPoseDetectionConfidence: 0.3,
+          minPosePresenceConfidence: 0.3,
+          minTrackingConfidence: 0.3,
+        });
+      try {
+        pendingModel = await createModel("GPU");
+      } catch {
+        if (id !== generation.current) {
+          pending?.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        pendingModel = await createModel("CPU");
+      }
       if (id !== generation.current) {
         pending.getTracks().forEach((t) => t.stop());
         pendingModel.close();
@@ -111,10 +130,18 @@ export function useTracking(arm: Arm) {
               message:
                 angle !== null
                   ? "I can see your arm."
-                  : points.length
-                    ? "Move your hand into view."
-                    : "Let’s adjust the camera.",
+                  : armTrackingMessage(points, armRef.current),
             });
+          } else if (!document.hidden) {
+            setFrame((previous) =>
+              now - previous.at > FRAME_MAX_AGE_MS
+                ? {
+                    ...EMPTY,
+                    at: now,
+                    message: "The camera paused. Check the camera connection.",
+                  }
+                : previous,
+            );
           }
           timer.current = setTimeout(infer, 66);
         } catch {

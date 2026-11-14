@@ -10,6 +10,8 @@ import {
   Hand,
   ShieldCheck,
 } from "lucide-react";
+import {FRAME_MAX_AGE_MS} from "../movement/calibration";
+import { usableLandmark } from "../movement/core";
 import type { Tracking } from "../movement/useTracking";
 import type { Session } from "../game/session";
 export function CameraFeed({
@@ -20,6 +22,8 @@ export function CameraFeed({
   arm: "left" | "right";
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
+  const frameRef = useRef(tracking.frame);
+  frameRef.current = tracking.frame;
   useEffect(() => {
     let id = 0;
     const draw = () => {
@@ -29,31 +33,37 @@ export function CameraFeed({
         const ctx = c.getContext("2d")!;
         ctx.clearRect(0, 0, c.width, c.height);
         if (vid && vid.readyState >= 2) {
+          if (c.width !== vid.videoWidth || c.height !== vid.videoHeight) {
+            c.width = vid.videoWidth;
+            c.height = vid.videoHeight;
+          }
           ctx.drawImage(vid, 0, 0, c.width, c.height);
-          if (tracking.frame.valid) {
+          const frame = frameRef.current;
+          if (performance.now() - frame.at < FRAME_MAX_AGE_MS) {
             const ids = arm === "left" ? [11, 13, 15] : [12, 14, 16];
-            const pts = ids.map((i) => tracking.frame.points[i]);
-            if (pts.every(Boolean)) {
-              ctx.strokeStyle = "#ffdf8b";
-              ctx.lineWidth = 5;
-              ctx.lineCap = "round";
-              ctx.beginPath();
-              pts.forEach((p, i) =>
-                i
-                  ? ctx.lineTo(p.x * c.width, p.y * c.height)
-                  : ctx.moveTo(p.x * c.width, p.y * c.height),
-              );
-              ctx.stroke();
-              pts.forEach((p) => {
+            const pts = ids.map((i) => frame.points[i]);
+            ctx.strokeStyle = "#ffdf8b";
+            ctx.lineWidth = 5;
+            ctx.lineCap = "round";
+            for (let i = 0; i < 2; i++) {
+              const a = pts[i],
+                b = pts[i + 1];
+              if (usableLandmark(a) && usableLandmark(b)) {
                 ctx.beginPath();
-                ctx.arc(p.x * c.width, p.y * c.height, 6, 0, Math.PI * 2);
-                ctx.fillStyle = "#fff4c4";
-                ctx.fill();
-                ctx.strokeStyle = "#416d58";
-                ctx.lineWidth = 2;
+                ctx.moveTo(a.x * c.width, a.y * c.height);
+                ctx.lineTo(b.x * c.width, b.y * c.height);
                 ctx.stroke();
-              });
+              }
             }
+            pts.filter(usableLandmark).forEach((p) => {
+              ctx.beginPath();
+              ctx.arc(p.x * c.width, p.y * c.height, 6, 0, Math.PI * 2);
+              ctx.fillStyle = "#fff4c4";
+              ctx.fill();
+              ctx.strokeStyle = "#416d58";
+              ctx.lineWidth = 2;
+              ctx.stroke();
+            });
           }
         }
       }
@@ -61,14 +71,20 @@ export function CameraFeed({
     };
     draw();
     return () => cancelAnimationFrame(id);
-  }, [tracking.video, tracking.frame, arm]);
+  }, [tracking.video, arm]);
   return (
-    <div className="camera-feed">
+    <div
+      className="camera-feed"
+      style={{
+        aspectRatio: `${tracking.video.current?.videoWidth || 640}/${tracking.video.current?.videoHeight || 480}`,
+      }}
+    >
       <canvas
         ref={canvas}
         width={640}
         height={480}
-        aria-label="Live camera preview with selected arm landmarks"
+        aria-label="Live mirrored camera preview with selected arm landmarks"
+        style={{ transform: "scaleX(-1)" }}
       />
       <span className="live-label">
         <i /> Live camera

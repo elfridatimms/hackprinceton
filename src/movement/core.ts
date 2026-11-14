@@ -1,3 +1,4 @@
+import { calibrationEstimate } from "./calibration";
 export type Landmark = {
   x: number;
   y: number;
@@ -12,8 +13,22 @@ export type TrackingFrame = {
   points: Landmark[];
   message: string;
 };
+export const ARM_VISIBILITY_THRESHOLD = 0.35;
 export const clamp = (n: number, min = 0, max = 1) =>
   Math.max(min, Math.min(max, n));
+export function usableLandmark(p: Landmark | undefined): p is Landmark {
+  return (
+    !!p &&
+    Number.isFinite(p.x) &&
+    Number.isFinite(p.y) &&
+    p.x >= 0 &&
+    p.x <= 1 &&
+    p.y >= 0 &&
+    p.y <= 1 &&
+    (p.visibility ?? 0) >= ARM_VISIBILITY_THRESHOLD &&
+    (p.presence ?? 1) >= ARM_VISIBILITY_THRESHOLD
+  );
+}
 /** Interior elbow angle: 180° is extended, smaller angles are more flexed. */
 export function elbowAngle(
   points: Landmark[],
@@ -23,20 +38,9 @@ export function elbowAngle(
   const ids = arm === "left" ? [11, 13, 15] : [12, 14, 16];
   const [s, e, w] = ids.map((i) => points[i]);
   if (
-    !s ||
-    !e ||
-    !w ||
-    ![s, e, w].every(
-      (p) =>
-        Number.isFinite(p.x) &&
-        Number.isFinite(p.y) &&
-        p.x >= 0 &&
-        p.x <= 1 &&
-        p.y >= 0 &&
-        p.y <= 1 &&
-        (p.visibility ?? 0) >= 0.65 &&
-        (p.presence ?? 1) >= 0.65,
-    )
+    !Number.isFinite(aspect) ||
+    aspect <= 0 ||
+    ![s, e, w].every(usableLandmark)
   )
     return null;
   const a = { x: (s.x - e.x) * aspect, y: s.y - e.y },
@@ -75,18 +79,9 @@ export function estimateEndpoint(
   samples: { angle: number; at: number }[],
   now: number,
 ) {
-  const recent = samples.filter((s) => now - s.at <= 1300 && now >= s.at);
-  if (recent.length < 12 || recent.at(-1)!.at - recent[0].at < 800) return null;
-  const sorted = recent.map((s) => s.angle).sort((a, b) => a - b);
-  const mid = sorted[Math.floor(sorted.length / 2)];
-  if (
-    sorted[Math.floor(sorted.length * 0.9)] -
-      sorted[Math.floor(sorted.length * 0.1)] >
-    6
-  )
-    return null;
-  return Math.round(mid);
+  return calibrationEstimate(samples, now).angle;
 }
+
 export class CycleCounter {
   phase: "seek-low" | "seek-high" | "return-low" = "seek-low";
   dwellAt: number | null = null;
@@ -150,4 +145,18 @@ export class TrackingGate {
     this.lastValid = null;
     this.ready = false;
   }
+}
+
+export function armTrackingMessage(points: Landmark[], arm: Arm) {
+  const label = arm === "left" ? "left" : "right";
+  const ids = arm === "left" ? [11, 13, 15] : [12, 14, 16];
+  const names = ["shoulder", "elbow", "wrist"];
+  const missing = ids.flatMap((id, i) =>
+    usableLandmark(points[id]) ? [] : [names[i]],
+  );
+  if (!points.length)
+    return "Move back a little so your upper body is in view.";
+  return missing.length
+    ? `Bring your ${label} ${missing.join(" and ")} into view.`
+    : `Keep your ${label} arm a little farther from the camera.`;
 }

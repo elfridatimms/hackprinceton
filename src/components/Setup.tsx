@@ -8,7 +8,13 @@ import {
   X,
   LoaderCircle,
 } from "lucide-react";
-import { estimateEndpoint, validRange } from "../movement/core";
+import { validRange, usableLandmark } from "../movement/core";
+import {
+  calibratedRange,
+  calibrationEstimate,
+  FRAME_MAX_AGE_MS,
+  CALIBRATION_WINDOW_MS,
+} from "../movement/calibration";
 import type { Settings, Session } from "../game/session";
 import type { Tracking } from "../movement/useTracking";
 import { SeatIllustration } from "./Illustrations";
@@ -32,43 +38,84 @@ export function Setup({
     [endpoint, setEndpoint] = useState<"lower" | "upper">("lower"),
     [lower, setLower] = useState<number | null>(null),
     [captureError, setCaptureError] = useState(""),
-    [stable, setStable] = useState<number | null>(null);
+    [now, setNow] = useState(() => performance.now()),
+    [manual, setManual] = useState(false),
+    [manualLower, setManualLower] = useState(settings.lower),
+    [manualUpper, setManualUpper] = useState(settings.upper);
   const samples = useRef<{ angle: number; at: number }[]>([]);
+  useEffect(() => {
+    const timer = setInterval(() => setNow(performance.now()), 100);
+    return () => clearInterval(timer);
+  }, []);
   useEffect(() => {
     if (tracking.frame.valid && tracking.frame.angle !== null) {
       samples.current.push({
         angle: tracking.frame.angle,
         at: tracking.frame.at,
       });
-      samples.current = samples.current.filter(
-        (s) => tracking.frame.at - s.at < 1400,
-      );
-      setStable(estimateEndpoint(samples.current, tracking.frame.at));
-    } else {
-      samples.current = [];
-      setStable(null);
     }
+    samples.current = samples.current.filter(
+      (s) => performance.now() - s.at <= CALIBRATION_WINDOW_MS,
+    );
+    setNow(performance.now());
   }, [tracking.frame]);
+  const fresh =
+    tracking.status === "on" &&
+    tracking.frame.valid &&
+    now - tracking.frame.at < FRAME_MAX_AGE_MS;
+  const estimate = calibrationEstimate(samples.current, now);
+  const stable = fresh ? estimate.angle : null;
+  const resetHold = () => {
+    samples.current = [];
+    setNow(performance.now());
+  };
+  const chooseArm = (arm: Settings["arm"]) => {
+    setSettings({ ...settings, arm });
+    setLower(null);
+    setEndpoint("lower");
+    setCaptureError("");
+    resetHold();
+  };
+  const armPicker = (
+    <div
+      className="arm-choice compact-arm-choice"
+      role="group"
+      aria-label="Arm to calibrate"
+    >
+      {(["left", "right"] as const).map((arm) => (
+        <button
+          key={arm}
+          className={settings.arm === arm ? "selected" : ""}
+          onClick={() => chooseArm(arm)}
+        >
+          {arm === "left" ? "Left" : "Right"} arm{" "}
+          {settings.arm === arm && <Check size={14} />}
+        </button>
+      ))}
+    </div>
+  );
   const capture = () => {
     if (
       stable === null ||
       !tracking.frame.valid ||
-      performance.now() - tracking.frame.at > 300
+      performance.now() - tracking.frame.at > FRAME_MAX_AGE_MS
     )
       return;
     if (endpoint === "lower") {
       setLower(stable);
       setEndpoint("upper");
-      samples.current = [];
-      setStable(null);
+      resetHold();
       setCaptureError("");
-    } else if (lower !== null && validRange(lower, stable)) {
-      setSettings({ ...settings, lower, upper: stable });
-      session.reset("practice");
-    } else
-      setCaptureError(
-        "Let’s try a slightly different comfortable position. We need at least 5° between the two endpoints.",
-      );
+    } else {
+      const range = lower === null ? null : calibratedRange(lower, stable);
+      if (range) {
+        setSettings({ ...settings, ...range });
+        session.reset("practice");
+      } else
+        setCaptureError(
+          `These two positions are only ${lower === null ? "0" : Math.abs(lower - stable).toFixed(1)}° apart. Try the first position again or use a configured range below. Stay comfortable.`,
+        );
+    }
   };
   const calibration = session.phase === "calibration";
   const stage = calibration ? 2 : step;
@@ -165,6 +212,7 @@ export function Setup({
                 </div>
               )}
             </div>
+            {armPicker}
             <h2 id="setup-title">A little side-on view.</h2>
             <p className="view-status">
               <i className={tracking.frame.valid ? "valid-dot" : ""} />
@@ -187,10 +235,9 @@ export function Setup({
             )}
             <button
               className="button primary full"
-              disabled={!tracking.frame.valid || tracking.status !== "on"}
+              disabled={!fresh}
               onClick={() => {
-                samples.current = [];
-                setStable(null);
+                resetHold();
                 session.transition("calibration");
               }}
             >
@@ -202,17 +249,41 @@ export function Setup({
           </>
         ) : (
           <>
-            <div className="calibration-art">
-              <SeatIllustration />
-              <div className="angle-display">
+            <div className="calibration-camera">
+              <CameraFeed tracking={tracking} arm={settings.arm} />
+            </div>
+            <div className="calibration-live-metrics">
+              <div>
                 <strong>
-                  {tracking.frame.valid && tracking.frame.angle !== null
+                  {fresh && tracking.frame.angle !== null
                     ? Math.round(tracking.frame.angle) + "°"
                     : "—"}
                 </strong>
-                <span>projected angle</span>
+                <span>current angle</span>
+              </div>
+              <div>
+                <strong>{lower === null ? "—" : lower + "°"}</strong>
+                <span>first position</span>
+              </div>
+              <div className="arm-landmark-status">
+                {(settings.arm === "left" ? [11, 13, 15] : [12, 14, 16]).map(
+                  (id, i) => (
+                    <span key={id}>
+                      <i
+                        className={
+                          now - tracking.frame.at < FRAME_MAX_AGE_MS &&
+                          usableLandmark(tracking.frame.points[id])
+                            ? "valid-dot"
+                            : ""
+                        }
+                      />
+                      {["Shoulder", "Elbow", "Wrist"][i]}
+                    </span>
+                  ),
+                )}
               </div>
             </div>
+            {armPicker}
             <span className="little-label">
               {endpoint === "lower" ? "POSITION 1 OF 2" : "POSITION 2 OF 2"}
             </span>
@@ -230,18 +301,32 @@ export function Setup({
               Stay within the movement agreed with your therapist. Small
               movements can take Luma all the way.
             </p>
-            {captureError && <p className="error-message">{captureError}</p>}
+            {captureError && fresh && lower !== null && tracking.frame.angle !== null && Math.abs(lower-tracking.frame.angle)<5 && <p className="error-message">{captureError}</p>}
             <div className="stable-status">
               <i className={stable !== null ? "valid-dot" : ""} />
-              {!tracking.frame.valid
-                ? "Keep your shoulder, elbow, and wrist in view."
+              {!fresh
+                ? tracking.frame.valid
+                  ? "Waiting for a fresh camera frame…"
+                  : tracking.frame.message
                 : stable !== null
                   ? "Lovely. Ready to remember this position."
                   : "Hold gently while we find a steady position…"}
             </div>
+            <div
+              className="hold-progress"
+              role="progressbar"
+              aria-label="Steady position"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round((fresh ? estimate.progress : 0) * 100)}
+            >
+              <span
+                style={{ width: `${(fresh ? estimate.progress : 0) * 100}%` }}
+              />
+            </div>
             <button
               className="button primary full"
-              disabled={stable === null || !tracking.frame.valid}
+              disabled={stable === null || !fresh}
               onClick={capture}
             >
               Remember this position <Check size={17} />
@@ -252,13 +337,76 @@ export function Setup({
                 onClick={() => {
                   setEndpoint("lower");
                   setLower(null);
-                  samples.current = [];
-                  setStable(null);
+                  resetHold();
                 }}
               >
                 <ChevronLeft size={14} /> Try the first position again
               </button>
             )}
+            {tracking.error && (
+              <div className="error-message">
+                {tracking.error}
+                <button onClick={() => void tracking.start()}>
+                  Reconnect camera
+                </button>
+              </div>
+            )}
+            <details
+              className="calibration-help"
+              open={manual}
+              onToggle={(e) => setManual(e.currentTarget.open)}
+            >
+              <summary>Having trouble? Use a configured range</summary>
+              <p>
+                Use comfortable limits agreed with your therapist. We still need
+                to see your arm to play in camera mode.
+              </p>
+              <div className="manual-range">
+                <label>
+                  Extended position
+                  <input
+                    type="number"
+                    min={15}
+                    max={180}
+                    value={manualLower}
+                    onChange={(e) => setManualLower(+e.target.value)}
+                  />
+                </label>
+                <label>
+                  Bent position
+                  <input
+                    type="number"
+                    min={10}
+                    max={175}
+                    value={manualUpper}
+                    onChange={(e) => setManualUpper(+e.target.value)}
+                  />
+                </label>
+              </div>
+              {!validRange(manualLower, manualUpper) && (
+                <p className="error-message">
+                  The extended angle must be at least 5° larger than the bent
+                  angle (10–180°).
+                </p>
+              )}
+              <button
+                className="button secondary full"
+                disabled={!fresh || !validRange(manualLower, manualUpper)}
+                onClick={() => {
+                  setSettings({
+                    ...settings,
+                    lower: manualLower,
+                    upper: manualUpper,
+                  });
+                  session.reset("practice");
+                }}
+              >
+                Use this range and practice <ArrowRight size={15} />
+              </button>
+            </details>
+            <button className="text-button centered" onClick={onDemo}>
+              Try without a camera instead
+            </button>
           </>
         )}
       </section>

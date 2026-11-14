@@ -1,3 +1,4 @@
+import { FRAME_MAX_AGE_MS } from "../movement/calibration";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   clamp,
@@ -239,7 +240,8 @@ export function useSession(
       let valid = c.mode === "demo";
       let waitingNow = false;
       if (c.mode === "camera") {
-        valid = c.trackingOn && c.frame.valid && now - c.frame.at < 300;
+        valid =
+          c.trackingOn && c.frame.valid && now - c.frame.at < FRAME_MAX_AGE_MS;
         const g = gate.current.update(valid, now);
         valid = g.canCount;
         waitingNow = g.waiting || !valid;
