@@ -20,6 +20,9 @@ import {
   calibrationEstimate,
   FRAME_MAX_AGE_MS,
   CALIBRATION_WINDOW_MS,
+  AUTO_SPOT_HOLD_MS,
+  AUTO_SPOT_WINDOW_MS,
+  AUTO_SPOT_PREPARE_MS,
 } from "../movement/calibration";
 import {
   exercises,
@@ -68,6 +71,7 @@ export function Setup({
     [manualUpper, setManualUpper] = useState(getMovementRange(settings).upper);
   const samples = useRef<{ angle: number; raw: number; at: number }[]>([]);
   const holds = useRef<number[][]>([]);
+  const autoReadyAt = useRef(performance.now() + AUTO_SPOT_PREPARE_MS);
   const [tuning, setTuning] = useState<{ lower: number; upper: number } | null>(
     null,
   );
@@ -83,33 +87,56 @@ export function Setup({
     const timer = setInterval(() => setNow(performance.now()), 100);
     return () => clearInterval(timer);
   }, []);
+  const eligible =
+    endpoint === "lower" ||
+    (lower !== null &&
+      value !== null &&
+      !!movementRange(settings.exercise, lower, value));
   useEffect(() => {
-    if (tracking.frame.valid && value !== null)
+    const f = tracking.frame;
+    if (
+      stage !== 2 ||
+      manual ||
+      !eligible ||
+      !f.valid ||
+      value === null ||
+      f.at < autoReadyAt.current ||
+      performance.now() - f.at > FRAME_MAX_AGE_MS
+    ) {
+      samples.current = [];
+    } else if (samples.current.at(-1)?.at !== f.at) {
       samples.current.push({
         angle: value,
-        raw: tracking.frame.rawValue ?? value,
-        at: tracking.frame.at,
+        raw: f.rawValue ?? value,
+        at: f.at,
       });
+    }
     samples.current = samples.current.filter(
-      (s) => performance.now() - s.at <= CALIBRATION_WINDOW_MS,
+      (s) => performance.now() - s.at <= AUTO_SPOT_WINDOW_MS,
     );
     setNow(performance.now());
-  }, [tracking.frame, value]);
+  }, [tracking.frame, value, eligible, stage, manual]);
+  const clockNow = Math.max(now, performance.now());
   const fresh =
     tracking.status === "on" &&
     tracking.frame.valid &&
     value !== null &&
-    now - tracking.frame.at < FRAME_MAX_AGE_MS;
-  const estimate = calibrationEstimate(
-    samples.current,
-    now,
-    movementLimits[settings.exercise],
-  );
+    clockNow >= tracking.frame.at &&
+    clockNow - tracking.frame.at < FRAME_MAX_AGE_MS;
+  const estimate = calibrationEstimate(samples.current, now, {
+    ...movementLimits[settings.exercise],
+    holdMs: AUTO_SPOT_HOLD_MS,
+    windowMs: AUTO_SPOT_WINDOW_MS,
+  });
   const stable = fresh ? estimate.angle : null;
   const resetHold = () => {
     samples.current = [];
+    autoReadyAt.current = performance.now() + AUTO_SPOT_PREPARE_MS;
     setNow(performance.now());
   };
+  useEffect(() => {
+    resetHold();
+  }, [stage, endpoint, settings.exercise, settings.arm]);
   const chooseArm = (arm: Settings["arm"]) => {
     setSettings({ ...settings, arm });
     holds.current = [];
@@ -153,7 +180,7 @@ export function Setup({
     )
       return;
     const rawHold = samples.current
-      .filter((s) => performance.now() - s.at <= CALIBRATION_WINDOW_MS)
+      .filter((s) => performance.now() - s.at <= AUTO_SPOT_WINDOW_MS)
       .map((s) => s.raw);
     if (endpoint === "lower") {
       holds.current = [rawHold];
@@ -173,6 +200,30 @@ export function Setup({
         );
     }
   };
+  useEffect(() => {
+    if (
+      stage === 2 &&
+      !manual &&
+      eligible &&
+      fresh &&
+      stable !== null &&
+      now >= autoReadyAt.current
+    )
+      capture();
+  }, [
+    stage,
+    endpoint,
+    manual,
+    eligible,
+    fresh,
+    stable,
+    now,
+    tracking.frame.at,
+  ]);
+  const preparing = now < autoReadyAt.current;
+  const autoProgress =
+    fresh && eligible && !manual && !preparing ? estimate.progress : 0;
+  const countdown = Math.max(1, Math.ceil((1 - autoProgress) * 3));
   const armPicker = (
     <div
       className="arm-choice compact-arm-choice"
@@ -449,7 +500,7 @@ export function Setup({
                       ? "Close your fingers gently, like a cozy little fist. No squeezing."
                       : "Open your fingers, just as much as feels comfy."
                     : endpoint === "lower"
-                      ? "Rest your hand where it feels comfy. Hold it for a little moment."
+                      ? "Rest your hand where it feels comfy. Hold it still. Luma will save it for you."
                       : reach
                         ? "Lift your hand just a little. Stop wherever feels comfy."
                         : "Bend your arm just a little. Stop wherever feels comfy."}
@@ -516,55 +567,49 @@ export function Setup({
             {captureError && fresh && (
               <p className="error-message">{captureError}</p>
             )}
-            <div className="stable-status">
-              <i className={stable !== null ? "valid-dot" : ""} />
-              {!fresh
-                ? tracking.status === "on"
-                  ? tracking.frame.message
-                  : "Let’s wake up the camera again."
-                : stable !== null
-                  ? "Lovely! Let’s remember this little spot."
-                  : "Stay like a sleepy statue for a moment…"}
+            <div
+              className={`auto-spot-save ${autoProgress > 0 ? "auto-holding" : ""}`}
+              role="status"
+              aria-live="polite"
+            >
+              <div className="auto-spot-count" aria-hidden="true">
+                {!fresh || preparing || !eligible || manual ? (
+                  <Hand size={23} />
+                ) : (
+                  countdown
+                )}
+              </div>
+              <div>
+                <strong>
+                  {!fresh
+                    ? "Let’s find your hand."
+                    : manual
+                      ? "Automatic saving is paused."
+                      : preparing
+                        ? endpoint === "upper"
+                          ? "First spot saved. Now try the next little move."
+                          : "Find your comfy spot."
+                        : !eligible
+                          ? "First spot saved. Move softly to your other spot."
+                          : "Hold gently. Luma will remember."}
+                </strong>
+                <span>
+                  {!fresh
+                    ? tracking.frame.message
+                    : "No button to press. Your spot saves automatically."}
+                </span>
+              </div>
             </div>
             <div
               className="hold-progress"
               role="progressbar"
-              aria-label="Steady position"
+              aria-label="Automatic position capture"
               aria-valuemin={0}
               aria-valuemax={100}
-              aria-valuenow={Math.round((fresh ? estimate.progress : 0) * 100)}
+              aria-valuenow={Math.round(autoProgress * 100)}
             >
-              <span
-                style={{ width: `${(fresh ? estimate.progress : 0) * 100}%` }}
-              />
+              <span style={{ width: `${autoProgress * 100}%` }} />
             </div>
-            <button
-              className="button primary full"
-              aria-label="Remember this position"
-              disabled={stable === null || !fresh}
-              onClick={capture}
-            >
-              {ship
-                ? endpoint === "lower"
-                  ? "That’s my left island"
-                  : "Ahoy! Let’s sail!"
-                : wrist
-                  ? endpoint === "lower"
-                    ? "Save my gentle spot"
-                    : "Let’s help the butterflies!"
-                  : grip
-                    ? endpoint === "lower"
-                      ? "That’s my sleepy hand"
-                      : "Let’s wake the flowers!"
-                    : endpoint === "lower"
-                      ? "Save my cozy spot"
-                      : "Let’s help Luma!"}{" "}
-              {endpoint === "lower" ? (
-                <Check size={17} />
-              ) : (
-                <Sparkles size={17} />
-              )}
-            </button>
             {endpoint === "upper" && (
               <button
                 className="text-button centered"
@@ -586,7 +631,10 @@ export function Setup({
             <details
               className="calibration-help grownup-fold"
               open={manual}
-              onToggle={(e) => setManual(e.currentTarget.open)}
+              onToggle={(e) => {
+                setManual(e.currentTarget.open);
+                resetHold();
+              }}
             >
               <summary>Grown-up help & movement range</summary>
               {!handMode && armPicker}

@@ -5099,3 +5099,63 @@ input[type="range"] {
     padding: 23px 17px;
   }
 }
+
+.auto-spot-save {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  text-align: left;
+  border: 1px solid #d9e1ca;
+  border-radius: 18px;
+  padding: 18px 21px;
+  margin: 19px 0 12px;
+  background: #eef2e4;
+}
+.auto-spot-count {
+  flex-shrink: 0;
+  width: 55px;
+  height: 55px;
+  border-radius: 50%;
+  background: #dbe5cd;
+  color: #7d9b70;
+  display: grid;
+  place-items: center;
+  font:
+    800 29px Nunito,
+    sans-serif;
+}
+.auto-holding .auto-spot-count {
+  background: #89a17d;
+  color: #fff8de;
+}
+.auto-spot-save strong {
+  display: block;
+  font-size: 14px;
+  line-height: 1.45;
+  margin-bottom: 5px;
+  color: #55785d;
+}
+.auto-spot-save span {
+  display: block;
+  font-size: 10px;
+  line-height: 1.6;
+  color: #92a181;
+}
+@media (max-width: 620px) {
+  .auto-spot-save {
+    padding: 14px;
+    gap: 12px;
+    margin-top: 13px;
+  }
+  .auto-spot-count {
+    height: 43px;
+    width: 43px;
+    font-size: 24px;
+  }
+  .auto-spot-save strong {
+    font-size: 11px;
+  }
+  .auto-spot-save span {
+    font-size: 8px;
+  }
+}

@@ -154,6 +154,9 @@ describe("The calibration screen that previously trapped the user", () => {
       render();
     }
   }
+  function holdSpot(value: number) {
+    frames(value, true, 18);
+  }
   function button(text: string) {
     return Array.from(host.querySelectorAll("button")).find(
       (b) =>
@@ -167,20 +170,16 @@ describe("The calibration screen that previously trapped the user", () => {
     expect(host.querySelector("canvas")).not.toBeNull();
     expect(button("Left hand")).toBeTruthy();
     expect(button("Play with buttons")).toBeTruthy();
-    expect(button("Remember this position").disabled).toBe(true);
+    expect(button("Remember this position")).toBeUndefined();
     click("Play with buttons");
     expect(onDemo).toHaveBeenCalledOnce();
   });
   it("captures low → tracking lost → recovered high and reaches practice", () => {
-    frames(150);
-    expect(button("Remember this position").disabled).toBe(false);
-    click("Remember this position");
+    holdSpot(150);
     expect(host.textContent).toContain("Give Luma a little lift!");
     frames(65, false, 1);
-    expect(button("Remember this position").disabled).toBe(true);
-    frames(65);
-    expect(button("Remember this position").disabled).toBe(false);
-    click("Remember this position");
+    expect(button("Remember this position")).toBeUndefined();
+    holdSpot(65);
     expect(reset).not.toHaveBeenCalled();
     expect(host.textContent).toContain("Two little moves.");
     frames(150);
@@ -194,21 +193,34 @@ describe("The calibration screen that previously trapped the user", () => {
     );
     expect(reset).toHaveBeenCalledWith("practice");
   });
-  it("never lets an old last-good frame complete calibration", () => {
-    frames(150);
-    expect(button("Remember this position").disabled).toBe(false);
+  it("never lets old last-good data finish an automatic hold", () => {
+    frames(150, true, 10);
     act(() => vi.advanceTimersByTime(600));
-    expect(button("Remember this position").disabled).toBe(true);
-    click("Remember this position");
+    expect(
+      host
+        .querySelector('[aria-label="Automatic position capture"]')
+        ?.getAttribute("aria-valuenow"),
+    ).toBe("0");
+    expect(host.textContent).toContain("Find your cozy spot.");
     expect(reset).not.toHaveBeenCalled();
+    holdSpot(150);
+    expect(host.textContent).toContain("Give Luma a little lift!");
+  });
+  it("waits for a different second spot rather than saving the first position twice", () => {
+    holdSpot(150);
+    frames(150, true, 30);
+    expect(host.textContent).toContain("Give Luma a little lift!");
+    expect(host.textContent).not.toContain("Two little moves.");
+    expect(reset).not.toHaveBeenCalled();
+    holdSpot(65);
+    expect(host.textContent).toContain("Two little moves.");
   });
   it("resets both endpoint history and capture readiness after an explicit arm switch", () => {
-    frames(150);
-    click("Remember this position");
+    holdSpot(150);
     click("Left hand");
     expect(settings.arm).toBe("left");
     expect(host.textContent).toContain("Find your cozy spot.");
-    expect(button("Remember this position").disabled).toBe(true);
+    expect(button("Remember this position")).toBeUndefined();
   });
   it("offers a configured range but still requires current valid tracking", () => {
     expect(button("Use this range and practice").disabled).toBe(true);
@@ -222,11 +234,9 @@ describe("The calibration screen that previously trapped the user", () => {
     expect(reset).toHaveBeenCalledWith("practice");
   });
   it("explains near-identical positions and keeps the demo exit usable", () => {
-    frames(95);
-    click("Remember this position");
-    frames(92);
-    click("Remember this position");
-    expect(host.textContent).toContain("two spots are very close");
+    holdSpot(95);
+    holdSpot(92);
+    expect(host.textContent).toContain("Move softly to your other spot");
     expect(reset).not.toHaveBeenCalled();
     click("Play with buttons");
     expect(onDemo).toHaveBeenCalledOnce();
@@ -234,15 +244,13 @@ describe("The calibration screen that previously trapped the user", () => {
   it("calibrates a softly closed and comfortably open hand without exposing angles to the child", () => {
     settings = { ...settings, exercise: "grip" };
     render();
-    frames(1.05);
     expect(host.textContent).toContain("A soft, sleepy hand.");
     expect(
       host.querySelector(".child-calibration-visual")?.textContent,
     ).not.toContain("°");
-    click("Remember this position");
-    frames(2.1);
+    holdSpot(1.05);
     expect(host.textContent).toContain("Let your flower say hello!");
-    click("Remember this position");
+    holdSpot(2.1);
     expect(reset).not.toHaveBeenCalled();
     frames(1.05);
     frames(2.1);
@@ -262,12 +270,10 @@ describe("The calibration screen that previously trapped the user", () => {
   it("calibrates the butterfly game independently from finger opening", () => {
     settings = { ...settings, exercise: "wrist" };
     render();
-    frames(12);
     expect(host.textContent).toContain("A soft, resting hand.");
-    click("Remember this position");
-    frames(47);
+    holdSpot(12);
     expect(host.textContent).toContain("Give your butterfly a breeze!");
-    click("Remember this position");
+    holdSpot(47);
     expect(reset).not.toHaveBeenCalled();
     frames(12);
     frames(47);
@@ -288,13 +294,11 @@ describe("The calibration screen that previously trapped the user", () => {
   it("captures comfortable left and right steering spots and proceeds to ship practice", () => {
     settings = { ...settings, exercise: "ship" };
     render();
-    frames(-18);
     expect(host.textContent).toContain("A little lean to the left.");
     expect(button("Left hand")).toBeUndefined();
-    click("Remember this position");
-    frames(22);
+    holdSpot(-18);
     expect(host.textContent).toContain("A little lean to the right.");
-    click("Remember this position");
+    holdSpot(22);
     expect(reset).not.toHaveBeenCalled();
     frames(-18);
     frames(22);
