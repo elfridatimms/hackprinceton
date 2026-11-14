@@ -9,6 +9,11 @@ import {
   type Session,
 } from "../src/game/session";
 import "../src/style.css";
+import {
+  exerciseOrder,
+  exercises,
+  type Exercise,
+} from "../src/movement/exercises";
 let image = new Image();
 image.src = new URL("./fixtures/right_hands.jpg", import.meta.url).href;
 const requestSource = async () => {
@@ -32,9 +37,14 @@ const requestSource = async () => {
   draw();
   const timer = setInterval(draw, 70);
   const stream = canvas.captureStream(15);
-  stream
-    .getVideoTracks()[0]
-    .addEventListener("ended", () => clearInterval(timer));
+  for (const track of stream.getTracks()) {
+    const stop = track.stop.bind(track);
+    track.stop = () => {
+      clearInterval(timer);
+      stop();
+    };
+    track.addEventListener("ended", () => clearInterval(timer));
+  }
   return stream;
 };
 function Check() {
@@ -44,6 +54,26 @@ function Check() {
   return (
     <div style={{ padding: 30 }}>
       <h1>Actual camera pipeline · recorded test source</h1>
+      <label>
+        Movement game
+        <select
+          aria-label="Test exercise"
+          value={settings.exercise}
+          onChange={(e) => {
+            setPhase("idle");
+            setSettings((s) => ({
+              ...s,
+              exercise: e.target.value as Exercise,
+            }));
+          }}
+        >
+          {exerciseOrder.map((game) => (
+            <option key={game} value={game}>
+              {exercises[game].tab}
+            </option>
+          ))}
+        </select>
+      </label>
       <p>
         No webcam access. Real MediaPipe inference from an official static test
         image. Test sessions are not rehabilitation sessions.
@@ -62,7 +92,15 @@ function Check() {
       </button>
       <button
         className="button secondary"
-        style={{position:"fixed",top:4,left:6,zIndex:120,fontSize:9,padding:6}} onClick={() => {
+        style={{
+          position: "fixed",
+          top: 4,
+          left: 6,
+          zIndex: 120,
+          fontSize: 9,
+          padding: 6,
+        }}
+        onClick={() => {
           image = new Image();
           image.src = new URL("./fixtures/thumb_up.jpg", import.meta.url).href;
         }}
@@ -71,7 +109,14 @@ function Check() {
       </button>
       <button
         className="button secondary"
-        style={{position:"fixed",top:4,right:6,zIndex:120,fontSize:9,padding:6}}
+        style={{
+          position: "fixed",
+          top: 4,
+          right: 6,
+          zIndex: 120,
+          fontSize: 9,
+          padding: 6,
+        }}
         onClick={() => {
           image = new Image();
           image.src = new URL(
@@ -98,6 +143,8 @@ function Check() {
             angle: tracking.frame.angle,
             handHeight: tracking.frame.height,
             openness: tracking.frame.openness,
+            rawOpenness: tracking.frame.rawOpenness,
+            tilt: tracking.frame.tilt,
             ageMs: Math.round(performance.now() - tracking.frame.at),
             videoAttached: tracking.video.current?.isConnected,
             diagnostics: tracking.diagnostics,

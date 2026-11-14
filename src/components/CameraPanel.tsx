@@ -46,7 +46,7 @@ export function CameraFeed({
           ctx.drawImage(vid, 0, 0, c.width, c.height);
           const frame = frameRef.current;
           if (performance.now() - frame.at < FRAME_MAX_AGE_MS) {
-            if (exercise === "grip") {
+            if (exercise === "grip" || exercise === "wrist") {
               if (frame.valid) {
                 const links = [
                   [0, 1],
@@ -173,6 +173,7 @@ export function InputPanel({
   collapsed,
   setCollapsed,
   onCameraOff,
+  onLesson,
   exercise = "grip",
 }: {
   session: Session;
@@ -181,6 +182,7 @@ export function InputPanel({
   collapsed: boolean;
   setCollapsed: (n: boolean) => void;
   onCameraOff: () => void;
+  onLesson?: () => void;
   exercise?: Exercise;
 }) {
   const demo = session.mode === "demo";
@@ -200,6 +202,11 @@ export function InputPanel({
             <div className="panel-move-example">
               <MovementGuide exercise={exercise} compact />
               <strong>{exercises[exercise].short}</strong>
+              {onLesson && (
+                <button className="watch-again-button" onClick={onLesson}>
+                  Show me how ↗
+                </button>
+              )}
             </div>
             {demo ? (
               <>
@@ -224,15 +231,21 @@ export function InputPanel({
                 </p>
                 <label className="demo-slider">
                   <span>
-                    {exercise === "grip" ? "Open the flower" : "Fly higher"}{" "}
+                    {exercise === "wrist"
+                      ? "Lift the butterfly"
+                      : exercise === "grip"
+                        ? "Open the flower"
+                        : "Fly higher"}{" "}
                     <ArrowUp size={14} />
                   </span>
                   <input
                     type="range"
                     aria-label={
-                      exercise === "grip"
-                        ? "Demo hand openness"
-                        : "Demo flight height"
+                      exercise === "wrist"
+                        ? "Demo hand tilt"
+                        : exercise === "grip"
+                          ? "Demo hand openness"
+                          : "Demo flight height"
                     }
                     min="0"
                     max="1"
@@ -243,7 +256,11 @@ export function InputPanel({
                     }}
                   />
                   <span>
-                    {exercise === "grip" ? "Close softly" : "Fly lower"}{" "}
+                    {exercise === "wrist"
+                      ? "Come softly back"
+                      : exercise === "grip"
+                        ? "Close softly"
+                        : "Fly lower"}{" "}
                     <ArrowDown size={14} />
                   </span>
                 </label>
@@ -265,12 +282,14 @@ export function InputPanel({
                   {tracking.frame.message}
                 </div>
                 <p className="small">
-                  {exercise === "grip"
-                    ? "One playing hand · palm to camera"
-                    : exercise === "reach"
-                      ? "Front view · both shoulders visible"
-                      : (arm === "left" ? "Left" : "Right") +
-                        " arm · side-on view"}
+                  {exercise === "wrist"
+                    ? "One playing hand · fingers across the picture"
+                    : exercise === "grip"
+                      ? "One playing hand · palm to camera"
+                      : exercise === "reach"
+                        ? "Front view · both shoulders visible"
+                        : (arm === "left" ? "Left" : "Right") +
+                          " arm · side-on view"}
                 </p>
                 <button className="text-button" onClick={onCameraOff}>
                   <CameraOff size={15} /> Turn camera off

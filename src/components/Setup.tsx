@@ -20,6 +20,12 @@ import {
 } from "../movement/calibration";
 import {
   exercises,
+  exerciseOrder,
+  getMovementRange,
+  applyMovementRange,
+  validMovementRange,
+  movementRange,
+  movementLimits,
   movementValue,
   reachRange,
   validReachRange,
@@ -30,6 +36,7 @@ import {
 import type { Settings, Session } from "../game/session";
 import type { Tracking } from "../movement/useTracking";
 import { MovementGuide } from "./MovementGuide";
+import { GameGlyph } from "./GameTabs";
 import { Portrait } from "./Illustrations";
 import { CameraFeed } from "./CameraPanel";
 import { CameraDiagnostics } from "./CameraDiagnostics";
@@ -54,23 +61,13 @@ export function Setup({
     [captureError, setCaptureError] = useState(""),
     [now, setNow] = useState(() => performance.now()),
     [manual, setManual] = useState(false),
-    [manualLower, setManualLower] = useState(
-      settings.exercise === "grip"
-        ? settings.gripLower
-        : settings.exercise === "reach"
-          ? settings.reachLower
-          : settings.lower,
-    ),
-    [manualUpper, setManualUpper] = useState(
-      settings.exercise === "grip"
-        ? settings.gripUpper
-        : settings.exercise === "reach"
-          ? settings.reachUpper
-          : settings.upper,
-    );
+    [manualLower, setManualLower] = useState(getMovementRange(settings).lower),
+    [manualUpper, setManualUpper] = useState(getMovementRange(settings).upper);
   const samples = useRef<{ angle: number; at: number }[]>([]);
   const reach = settings.exercise === "reach";
   const grip = settings.exercise === "grip";
+  const wrist = settings.exercise === "wrist";
+  const handMode = grip || wrist;
   const exercise = exercises[settings.exercise];
   const value = movementValue(tracking.frame, settings.exercise);
   const stage = session.phase === "calibration" ? 2 : step;
@@ -94,11 +91,7 @@ export function Setup({
   const estimate = calibrationEstimate(
     samples.current,
     now,
-    grip
-      ? { min: 0, max: 5, spread: 0.16, precision: 1000 }
-      : reach
-        ? { min: -4, max: 4, spread: 0.1, precision: 1000 }
-        : undefined,
+    movementLimits[settings.exercise],
   );
   const stable = fresh ? estimate.angle : null;
   const resetHold = () => {
@@ -113,34 +106,18 @@ export function Setup({
     resetHold();
   };
   const chooseExercise = (next: Exercise) => {
-    setSettings({ ...settings, exercise: next });
-    setManualLower(
-      next === "grip"
-        ? settings.gripLower
-        : next === "reach"
-          ? settings.reachLower
-          : settings.lower,
-    );
-    setManualUpper(
-      next === "grip"
-        ? settings.gripUpper
-        : next === "reach"
-          ? settings.reachUpper
-          : settings.upper,
-    );
+    const nextSettings = { ...settings, exercise: next };
+    setSettings(nextSettings);
+    const range = getMovementRange(nextSettings);
+    setManualLower(range.lower);
+    setManualUpper(range.upper);
     setLower(null);
     setEndpoint("lower");
     setCaptureError("");
     resetHold();
   };
   const finishRange = (low: number, high: number) => {
-    setSettings(
-      grip
-        ? { ...settings, gripLower: low, gripUpper: high }
-        : reach
-          ? { ...settings, reachLower: low, reachUpper: high }
-          : { ...settings, lower: low, upper: high },
-    );
+    setSettings(applyMovementRange(settings, low, high));
     session.reset("practice");
   };
   const capture = () => {
@@ -157,13 +134,7 @@ export function Setup({
       setCaptureError("");
     } else {
       const range =
-        lower === null
-          ? null
-          : grip
-            ? gripRange(lower, stable)
-            : reach
-              ? reachRange(lower, stable)
-              : calibratedRange(lower, stable);
+        lower === null ? null : movementRange(settings.exercise, lower, stable);
       if (range) finishRange(range.lower, range.upper);
       else
         setCaptureError(
@@ -190,11 +161,11 @@ export function Setup({
       ))}
     </div>
   );
-  const manualValid = grip
-    ? validGripRange(manualLower, manualUpper)
-    : reach
-      ? validReachRange(manualLower, manualUpper)
-      : validRange(manualLower, manualUpper);
+  const manualValid = validMovementRange(
+    settings.exercise,
+    manualLower,
+    manualUpper,
+  );
   return (
     <div className="modal-backdrop setup-backdrop">
       <section
@@ -230,13 +201,17 @@ export function Setup({
         </div>
         {stage === 0 ? (
           <>
-            <h2 id="setup-title">Let’s wake a sleepy flower!</h2>
-            <p>Open your hand. Watch a little flower say hello.</p>
+            <h2 id="setup-title">
+              {grip ? "Let’s wake a sleepy flower!" : exercise.title + "!"}
+            </h2>
+            <p>{exercise.description}</p>
             <div className="flower-mission-badge">
-              <span>✿</span>
+              <span className="mission-game-icon">
+                <GameGlyph exercise={settings.exercise} />
+              </span>
               <div>
-                <strong>A tiny flower needs your magic.</strong>
-                <small>Soft hands. Happy petals.</small>
+                <strong>{exercise.intro}</strong>
+                <small>{exercise.short}</small>
               </div>
             </div>
             <div className="watch-luma">
@@ -247,11 +222,13 @@ export function Setup({
               <div className="movement-steps">
                 <span>
                   <b>1</b>
-                  {grip
-                    ? "Open your hand"
-                    : reach
-                      ? "Reach for the light"
-                      : "Give Luma a lift"}
+                  {wrist
+                    ? "Tilt your hand"
+                    : grip
+                      ? "Open your hand"
+                      : reach
+                        ? "Reach for the light"
+                        : "Give Luma a lift"}
                 </span>
                 <i>↝</i>
                 <span>
@@ -274,7 +251,7 @@ export function Setup({
                 role="group"
                 aria-label="Choose your movement game"
               >
-                {(["grip", "reach", "elbow"] as const).map((item) => (
+                {exerciseOrder.map((item) => (
                   <button
                     key={item}
                     className={
@@ -296,7 +273,7 @@ export function Setup({
                   </button>
                 ))}
               </div>
-              {!grip && armPicker}
+              {!handMode && armPicker}
               <p>
                 Use comfortable movement agreed with the treating professional.{" "}
                 {exercise.camera}
@@ -323,11 +300,13 @@ export function Setup({
           <>
             <h2 id="setup-title">Hello, little light keeper!</h2>
             <p>
-              {grip
-                ? "Show one hand, with your palm facing the camera."
-                : reach
-                  ? "Sit facing the camera. Give us a little wave."
-                  : "Sit a little sideways. Let the camera see your arm."}
+              {wrist
+                ? "Show your hand from a little side view, with fingers pointing across the picture."
+                : grip
+                  ? "Show one hand, with your palm facing the camera."
+                  : reach
+                    ? "Sit facing the camera. Give us a little wave."
+                    : "Sit a little sideways. Let the camera see your arm."}
             </p>
             <div className="setup-camera">
               {tracking.video.current?.srcObject ? (
@@ -366,7 +345,7 @@ export function Setup({
                 </small>
               </div>
             </div>
-            {!grip && armPicker}
+            {!handMode && armPicker}
             {tracking.error && (
               <div className="error-message">
                 {tracking.error}
@@ -396,26 +375,36 @@ export function Setup({
               <div>
                 <small>YOUR TWO LITTLE MAGIC SPOTS</small>
                 <h2 id="setup-title">
-                  {grip
+                  {wrist
                     ? endpoint === "lower"
-                      ? "A soft, sleepy hand."
-                      : "Let your flower say hello!"
-                    : endpoint === "lower"
-                      ? "Find your cozy spot."
-                      : "Reach for a little light."}
+                      ? "A soft, resting hand."
+                      : "Give your butterfly a breeze!"
+                    : grip
+                      ? endpoint === "lower"
+                        ? "A soft, sleepy hand."
+                        : "Let your flower say hello!"
+                      : endpoint === "lower"
+                        ? "Find your cozy spot."
+                        : reach
+                          ? "Reach for a little light."
+                          : "Give Luma a little lift!"}
                 </h2>
               </div>
             </div>
             <p>
-              {grip
+              {wrist
                 ? endpoint === "lower"
-                  ? "Close your fingers gently, like a cozy little fist. No squeezing."
-                  : "Open your fingers, just as much as feels comfy."
-                : endpoint === "lower"
-                  ? "Rest your hand where it feels comfy. Hold it for a little moment."
-                  : reach
-                    ? "Lift your hand just a little. Stop wherever feels comfy."
-                    : "Bend your arm just a little. Stop wherever feels comfy."}
+                  ? "Rest your forearm comfortably. Find a gentle starting spot for your hand."
+                  : "Gently tilt your hand up a little. Stop wherever feels comfy."
+                : grip
+                  ? endpoint === "lower"
+                    ? "Close your fingers gently, like a cozy little fist. No squeezing."
+                    : "Open your fingers, just as much as feels comfy."
+                  : endpoint === "lower"
+                    ? "Rest your hand where it feels comfy. Hold it for a little moment."
+                    : reach
+                      ? "Lift your hand just a little. Stop wherever feels comfy."
+                      : "Bend your arm just a little. Stop wherever feels comfy."}
             </p>
             <div className="child-calibration-visual">
               <div className="calibration-camera">
@@ -432,13 +421,17 @@ export function Setup({
                   compact
                 />
                 <span>
-                  {grip
+                  {wrist
                     ? endpoint === "lower"
-                      ? "Softly closed"
-                      : "Gently open"
-                    : endpoint === "lower"
-                      ? "A cozy place to start"
-                      : "A little lift is enough"}
+                      ? "Rest gently"
+                      : "A little tilt"
+                    : grip
+                      ? endpoint === "lower"
+                        ? "Softly closed"
+                        : "Gently open"
+                      : endpoint === "lower"
+                        ? "A cozy place to start"
+                        : "A little lift is enough"}
                 </span>
               </div>
             </div>
@@ -447,12 +440,16 @@ export function Setup({
                 <span>
                   {lower !== null ? <Check size={14} /> : <Hand size={15} />}
                 </span>
-                {grip ? "Sleepy hand" : "Cozy spot"}
+                {wrist ? "Resting spot" : grip ? "Sleepy hand" : "Cozy spot"}
               </div>
               <i />
               <div className={endpoint === "upper" ? "spot active" : "spot"}>
                 <span>✦</span>
-                {grip ? "Hello, flower!" : "Little light"}
+                {wrist
+                  ? "Little flutter"
+                  : grip
+                    ? "Hello, flower!"
+                    : "Little light"}
               </div>
             </div>
             {captureError && fresh && (
@@ -486,13 +483,17 @@ export function Setup({
               disabled={stable === null || !fresh}
               onClick={capture}
             >
-              {grip
+              {wrist
                 ? endpoint === "lower"
-                  ? "That’s my sleepy hand"
-                  : "Let’s wake the flowers!"
-                : endpoint === "lower"
-                  ? "Save my cozy spot"
-                  : "Let’s help Luma!"}{" "}
+                  ? "Save my gentle spot"
+                  : "Let’s help the butterflies!"
+                : grip
+                  ? endpoint === "lower"
+                    ? "That’s my sleepy hand"
+                    : "Let’s wake the flowers!"
+                  : endpoint === "lower"
+                    ? "Save my cozy spot"
+                    : "Let’s help Luma!"}{" "}
               {endpoint === "lower" ? (
                 <Check size={17} />
               ) : (
@@ -521,7 +522,7 @@ export function Setup({
               onToggle={(e) => setManual(e.currentTarget.open)}
             >
               <summary>Grown-up help & movement range</summary>
-              {!grip && armPicker}
+              {!handMode && armPicker}
               <p>
                 {exercise.camera} Use limits agreed with the treating
                 professional. Camera estimates are not validated clinical
@@ -529,30 +530,34 @@ export function Setup({
               </p>
               <div className="manual-range">
                 <label>
-                  {grip
-                    ? "Softly closed level"
-                    : reach
-                      ? "Resting hand level"
-                      : "Extended position"}
+                  {wrist
+                    ? "Resting hand tilt"
+                    : grip
+                      ? "Softly closed level"
+                      : reach
+                        ? "Resting hand level"
+                        : "Extended position"}
                   <input
                     type="number"
-                    min={grip ? 0 : reach ? -4 : 15}
-                    max={grip ? 5 : reach ? 4 : 180}
+                    min={movementLimits[settings.exercise].min}
+                    max={movementLimits[settings.exercise].max}
                     step={grip || reach ? 0.05 : 1}
                     value={manualLower}
                     onChange={(e) => setManualLower(+e.target.value)}
                   />
                 </label>
                 <label>
-                  {grip
-                    ? "Comfortably open level"
-                    : reach
-                      ? "Raised hand level"
-                      : "Bent position"}
+                  {wrist
+                    ? "Comfortably raised tilt"
+                    : grip
+                      ? "Comfortably open level"
+                      : reach
+                        ? "Raised hand level"
+                        : "Bent position"}
                   <input
                     type="number"
-                    min={grip ? 0 : reach ? -4 : 10}
-                    max={grip ? 5 : reach ? 4 : 175}
+                    min={movementLimits[settings.exercise].min}
+                    max={movementLimits[settings.exercise].max}
                     step={grip || reach ? 0.05 : 1}
                     value={manualUpper}
                     onChange={(e) => setManualUpper(+e.target.value)}
@@ -560,21 +565,25 @@ export function Setup({
                 </label>
               </div>
               <p className="small">
-                {grip
-                  ? "Levels are fingertip distance relative to palm size. Keep the same hand visible."
-                  : reach
-                    ? "Levels are relative to shoulder width. Both shoulders and the selected wrist must be visible."
-                    : "Angles use 180° for extension and smaller values for bending."}
+                {wrist
+                  ? "Tilt is the 2D hand direction in the picture, not an isolated anatomical wrist angle."
+                  : grip
+                    ? "Levels are fingertip distance relative to palm size. Keep the same hand visible."
+                    : reach
+                      ? "Levels are relative to shoulder width. Both shoulders and the selected wrist must be visible."
+                      : "Angles use 180° for extension and smaller values for bending."}
                 {lower !== null &&
                   ` First captured spot: ${lower.toFixed(grip || reach ? 2 : 1)}${grip || reach ? "" : "°"}.`}
               </p>
               {!manualValid && (
                 <p className="error-message">
-                  {grip
-                    ? "The open level must be at least 0.2 above the closed level."
-                    : reach
-                      ? "The raised level must be at least 0.12 above the resting level."
-                      : "The extended angle must be at least 5° larger than the bent angle."}
+                  {wrist
+                    ? "The raised hand tilt must be at least 5° above the resting tilt."
+                    : grip
+                      ? "The open level must be at least 0.2 above the closed level."
+                      : reach
+                        ? "The raised level must be at least 0.12 above the resting level."
+                        : "The extended angle must be at least 5° larger than the bent angle."}
                 </p>
               )}
               <button

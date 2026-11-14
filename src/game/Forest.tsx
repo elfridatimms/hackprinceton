@@ -1,3 +1,4 @@
+import { GameWorldObjects } from "./GameWorldObjects";
 import { MagicFlower } from "./MagicFlower";
 import {
   useMemo,
@@ -677,6 +678,7 @@ function Scenery({
           )}
       </group>
       <MagicFlower world={world} welcome={welcome} />
+      <GameWorldObjects world={world} welcome={welcome} />
       <AncientTree world={world} />
       <CollectionSparkles world={world} />
       <Dragon world={world} welcome={welcome} />

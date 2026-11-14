@@ -145,6 +145,7 @@ describe("The calibration screen that previously trapped the user", () => {
           angle: valid ? angle : null,
           openness: valid ? angle : null,
           height: valid ? angle : null,
+          tilt: valid ? angle : null,
           valid,
           at: performance.now(),
         },
@@ -173,7 +174,7 @@ describe("The calibration screen that previously trapped the user", () => {
     frames(150);
     expect(button("Remember this position").disabled).toBe(false);
     click("Remember this position");
-    expect(host.textContent).toContain("Reach for a little light.");
+    expect(host.textContent).toContain("Give Luma a little lift!");
     frames(65, false, 1);
     expect(button("Remember this position").disabled).toBe(true);
     frames(65);
@@ -237,6 +238,25 @@ describe("The calibration screen that previously trapped the user", () => {
         exercise: "grip",
         gripLower: 1.05,
         gripUpper: 2.1,
+      }),
+    );
+    expect(reset).toHaveBeenCalledWith("practice");
+  });
+  it("calibrates the butterfly game independently from finger opening", () => {
+    settings = { ...settings, exercise: "wrist" };
+    render();
+    frames(12);
+    expect(host.textContent).toContain("A soft, resting hand.");
+    click("Remember this position");
+    frames(47);
+    expect(host.textContent).toContain("Give your butterfly a breeze!");
+    click("Remember this position");
+    expect(save).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        exercise: "wrist",
+        tiltLower: 12,
+        tiltUpper: 47,
+        gripLower: defaultSettings.gripLower,
       }),
     );
     expect(reset).toHaveBeenCalledWith("practice");

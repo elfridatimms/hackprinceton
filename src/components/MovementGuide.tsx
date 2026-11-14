@@ -1,3 +1,4 @@
+import { TiltGuide } from "./TiltGuide";
 import { GripGuide } from "./GripGuide";
 import type { Exercise } from "../movement/exercises";
 import { Portrait, SeatIllustration } from "./Illustrations";
@@ -10,6 +11,8 @@ export function MovementGuide({
   direction?: "loop" | "up" | "down" | "low" | "high";
   compact?: boolean;
 }) {
+  if (exercise === "wrist")
+    return <TiltGuide direction={direction} compact={compact} />;
   if (exercise === "grip")
     return <GripGuide direction={direction} compact={compact} />;
   const moving =

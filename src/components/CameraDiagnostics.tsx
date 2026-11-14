@@ -12,7 +12,7 @@ export function CameraDiagnostics({
   const report = () =>
     JSON.stringify(
       {
-        build: d?.build ?? "camera-3",
+        build: d?.build ?? "forest-games-5",
         stage: d?.stage ?? tracking.status,
         cameraStatus: tracking.status,
         videoSize: d?.video ?? "unknown",
@@ -33,7 +33,7 @@ export function CameraDiagnostics({
     );
   return (
     <details className="calibration-help camera-diagnostics">
-      <summary>Camera help · version 3</summary>
+      <summary>Grown-up camera help</summary>
       <p>
         Tracker: {d?.engine ?? "CPU"} · {d?.stage ?? tracking.status}
       </p>

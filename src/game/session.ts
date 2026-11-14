@@ -24,6 +24,8 @@ export type Settings = {
   exercise: Exercise;
   gripLower: number;
   gripUpper: number;
+  tiltLower: number;
+  tiltUpper: number;
   reachLower: number;
   reachUpper: number;
   arm: "left" | "right";
@@ -51,6 +53,8 @@ export const defaultSettings: Settings = {
   exercise: "grip",
   gripLower: 1.1,
   gripUpper: 2.2,
+  tiltLower: 10,
+  tiltUpper: 55,
   reachLower: -1,
   reachUpper: 0.1,
   arm: "right",
@@ -262,6 +266,16 @@ export function useSession(
         waitingNow = g.waiting || !valid;
         if (valid) {
           if (
+            c.settings.exercise === "wrist" &&
+            c.frame.tilt !== null &&
+            c.frame.tilt !== undefined
+          )
+            control.current = normalizeReach(
+              c.frame.tilt,
+              c.settings.tiltLower,
+              c.settings.tiltUpper,
+            );
+          else if (
             c.settings.exercise === "grip" &&
             c.frame.openness !== null &&
             c.frame.openness !== undefined

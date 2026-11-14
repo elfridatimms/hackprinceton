@@ -9,6 +9,10 @@ import {
 } from "lucide-react";
 import {
   exercises,
+  getMovementRange,
+  applyMovementRange,
+  validMovementRange,
+  movementLimits,
   validReachRange,
   validGripRange,
   type Exercise,
@@ -32,13 +36,12 @@ export function Settings({
     [cleared, setCleared] = useState(false);
   const set = <K extends keyof Config>(key: K, value: Config[K]) =>
     setDraft((s) => ({ ...s, [key]: value }));
-  const reach = draft.exercise === "reach";
-  const grip = draft.exercise === "grip";
-  const valid = grip
-    ? validGripRange(draft.gripLower, draft.gripUpper)
-    : reach
-      ? validReachRange(draft.reachLower, draft.reachUpper)
-      : validRange(draft.lower, draft.upper);
+  const reach = draft.exercise === "reach",
+    grip = draft.exercise === "grip",
+    wrist = draft.exercise === "wrist",
+    handMode = grip || wrist;
+  const range = getMovementRange(draft);
+  const valid = validMovementRange(draft.exercise, range.lower, range.upper);
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <section
@@ -71,23 +74,24 @@ export function Settings({
             onChange={(e) => set("exercise", e.target.value as Exercise)}
           >
             <option value="grip">Wake a sleepy flower · open & close</option>
+            <option value="wrist">Butterfly Breeze · tilt & return</option>
             <option value="reach">Catch a firefly · reach & return</option>
             <option value="elbow">Give Luma a lift · bend & return</option>
           </select>
         </label>
         <div className="settings-grid">
           <label>
-            {grip ? "Playing hand" : "Arm to follow"}
+            {handMode ? "Playing hand" : "Arm to follow"}
             <select
               value={draft.arm}
-              disabled={grip}
+              disabled={handMode}
               onChange={(e) => set("arm", e.target.value as Config["arm"])}
             >
               <option value="right">
-                {grip ? "The one hand you show" : "Right arm"}
+                {handMode ? "The one hand you show" : "Right arm"}
               </option>
               <option value="left">
-                {grip ? "The one hand you show" : "Left arm"}
+                {handMode ? "The one hand you show" : "Left arm"}
               </option>
             </select>
           </label>
@@ -105,28 +109,23 @@ export function Settings({
             </select>
           </label>
           <label>
-            {grip
-              ? "Softly closed hand"
-              : reach
-                ? "Resting hand level"
-                : "Lower position (extended)"}
+            {wrist
+              ? "Resting hand tilt"
+              : grip
+                ? "Softly closed hand"
+                : reach
+                  ? "Resting hand level"
+                  : "Lower position (extended)"}
             <div className="number-input">
               <input
                 type="number"
-                min={grip ? 0 : reach ? -4 : 15}
-                max={grip ? 5 : reach ? 4 : 180}
+                min={movementLimits[draft.exercise].min}
+                max={movementLimits[draft.exercise].max}
                 step={grip || reach ? 0.05 : 1}
-                value={
-                  grip
-                    ? draft.gripLower
-                    : reach
-                      ? draft.reachLower
-                      : draft.lower
-                }
+                value={range.lower}
                 onChange={(e) =>
-                  set(
-                    grip ? "gripLower" : reach ? "reachLower" : "lower",
-                    +e.target.value,
+                  setDraft((s) =>
+                    applyMovementRange(s, +e.target.value, range.upper),
                   )
                 }
               />
@@ -134,28 +133,23 @@ export function Settings({
             </div>
           </label>
           <label>
-            {grip
-              ? "Comfortably open hand"
-              : reach
-                ? "Raised hand level"
-                : "Upper position (bent)"}
+            {wrist
+              ? "Comfortably raised tilt"
+              : grip
+                ? "Comfortably open hand"
+                : reach
+                  ? "Raised hand level"
+                  : "Upper position (bent)"}
             <div className="number-input">
               <input
                 type="number"
-                min={grip ? 0 : reach ? -4 : 10}
-                max={grip ? 5 : reach ? 4 : 175}
+                min={movementLimits[draft.exercise].min}
+                max={movementLimits[draft.exercise].max}
                 step={grip || reach ? 0.05 : 1}
-                value={
-                  grip
-                    ? draft.gripUpper
-                    : reach
-                      ? draft.reachUpper
-                      : draft.upper
-                }
+                value={range.upper}
                 onChange={(e) =>
-                  set(
-                    grip ? "gripUpper" : reach ? "reachUpper" : "upper",
-                    +e.target.value,
+                  setDraft((s) =>
+                    applyMovementRange(s, range.lower, +e.target.value),
                   )
                 }
               />
@@ -165,11 +159,13 @@ export function Settings({
         </div>
         {!valid && (
           <p className="error-message">
-            {grip
-              ? "The open hand level must be at least 0.2 above the closed level (0–5)."
-              : reach
-                ? "The raised hand level must be at least 0.12 above the resting level (−4 to 4)."
-                : "Use a lower-position angle at least 5° larger than the upper-position angle (10–180°)."}
+            {wrist
+              ? "Use a raised hand tilt at least 5° above its resting tilt (−90 to 90°)."
+              : grip
+                ? "The open hand level must be at least 0.2 above the closed level (0–5)."
+                : reach
+                  ? "The raised hand level must be at least 0.12 above the resting level (−4 to 4)."
+                  : "Use a lower-position angle at least 5° larger than the upper-position angle (10–180°)."}
           </p>
         )}
         <div className="setting-row">
@@ -233,6 +229,13 @@ export function Settings({
             />
           </div>
         ))}
+        {(grip || wrist) && (
+          <p className="hand-filter-note">
+            Hand steadiness: a short median filter removes single-frame jumps,
+            then a time-aware EMA softens the motion. Missing tracking still
+            stops the game immediately.
+          </p>
+        )}
         <div className="grownup-note">
           <ShieldCheck size={20} />
           <p>

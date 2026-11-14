@@ -3955,3 +3955,414 @@ input[type="range"] {
     font-size: 6px;
   }
 }
+/* Four accessible storybook game tabs. */
+.forest-games {
+  margin: -1px 0 26px;
+}
+.games-label {
+  font-size: 9px;
+  color: #94a082;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 3px 12px;
+}
+.games-label > span {
+  color: #c4aa6c;
+}
+.game-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 11px;
+}
+.game-tab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  border: 1.5px solid #e2e6d7;
+  border-radius: 17px;
+  padding: 12px 14px;
+  background: #f9f8f0;
+  min-height: 76px;
+  position: relative;
+}
+.game-tab:hover {
+  transform: translateY(-2px);
+  background: #f0f3e7;
+}
+.game-tab.selected {
+  background: #f4e7d7;
+  border-color: #dabf9e;
+  box-shadow: 0 5px 13px #b6a07f09;
+}
+.game-tab.game-reach.selected {
+  background: #f5edcf;
+  border-color: #dcca8e;
+}
+.game-tab.game-elbow.selected {
+  background: #e8eee0;
+  border-color: #b5c8a2;
+}
+.game-tab.game-wrist.selected {
+  background: #ede8f1;
+  border-color: #c7b8d5;
+}
+.game-tab-art {
+  height: 45px;
+  width: 45px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.game-tab-art > svg {
+  width: 45px;
+  height: 45px;
+}
+.game-tab-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+.game-tab-copy strong {
+  font-family: Nunito, sans-serif;
+  font-weight: 800;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.game-tab-copy small {
+  font-size: 8px;
+  color: #96a184;
+  white-space: nowrap;
+}
+.tab-selected-mark {
+  margin-left: auto;
+  font-size: 13px;
+  color: #b9bfa9;
+}
+.game-tab.selected .tab-selected-mark {
+  color: #c09f6e;
+}
+.game-tab.selected .game-tab-art {
+  animation: tab-little-bob 4s ease-in-out infinite;
+}
+.game-tab.selected .glyph-butterfly-wings {
+  animation: guide-butterfly-flap 2s ease-in-out infinite;
+  transform-origin: 28px 28px;
+}
+.mission-game-icon > svg {
+  height: 37px;
+  width: 37px;
+}
+.tilt-guide {
+  max-width: 330px;
+}
+.tilt-guide:not(.tilt-low):not(.tilt-high) .tilting-hand {
+  animation: tilt-a-little-hand 5s ease-in-out infinite;
+}
+.tilt-guide:not(.tilt-low):not(.tilt-high) .guide-butterfly {
+  animation: lift-little-butterfly 5s ease-in-out infinite;
+}
+.guide-butterfly-wings {
+  animation: guide-butterfly-flap 1.7s ease-in-out infinite;
+  transform-origin: 254px 86px;
+}
+.tilt-high .guide-butterfly {
+  transform: translateY(-16px);
+}
+@keyframes tilt-a-little-hand {
+  0%,
+  15%,
+  90%,
+  100% {
+    transform: rotate(0);
+  }
+  43%,
+  62% {
+    transform: rotate(-34deg);
+  }
+}
+@keyframes lift-little-butterfly {
+  0%,
+  15%,
+  90%,
+  100% {
+    transform: translateY(0);
+  }
+  43%,
+  62% {
+    transform: translateY(-24px);
+  }
+}
+@keyframes guide-butterfly-flap {
+  50% {
+    transform: scaleX(0.7);
+  }
+}
+@keyframes tab-little-bob {
+  50% {
+    transform: translateY(-3px) rotate(3deg);
+  }
+}
+.movement-lesson {
+  text-align: center;
+  width: 460px;
+}
+.lesson-icon {
+  height: 60px;
+  width: 60px;
+  border-radius: 20px;
+  background: #eef0df;
+  padding: 6px;
+  margin: 0 auto 12px;
+}
+.lesson-icon.game-wrist {
+  background: #eee7f0;
+}
+.lesson-icon.game-grip {
+  background: #f5e7da;
+}
+.movement-lesson h2 {
+  font-size: 27px;
+  margin-bottom: 10px;
+}
+.movement-lesson > p {
+  font-size: 11px;
+  line-height: 1.8;
+}
+.lesson-example {
+  background: #eef1e2;
+  border-radius: 18px;
+  margin: 22px 0 19px;
+  padding: 13px;
+}
+.lesson-example > .movement-guide {
+  max-width: 280px;
+  height: 215px;
+  aspect-ratio: auto;
+}
+.lesson-steps {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  text-align: left;
+}
+.lesson-steps > li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #6c8563;
+}
+.lesson-steps b {
+  height: 26px;
+  width: 26px;
+  border-radius: 50%;
+  background: #e1e9d4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-family: Nunito;
+  font-size: 12px;
+}
+.movement-lesson .lesson-reassurance {
+  font-size: 9px;
+  color: #9ba588;
+  margin: 18px 0 20px;
+}
+.movement-lesson .button {
+  border-radius: 14px;
+}
+.watch-again-button {
+  font-size: 8px;
+  display: block;
+  margin: 7px auto 0;
+  color: #899b72;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.lesson-help-button {
+  font-family: Nunito, sans-serif;
+  font-weight: 900;
+  font-size: 17px;
+}
+.switch-game-card {
+  text-align: center;
+  width: 420px;
+}
+.switch-game-card > svg {
+  height: 77px;
+  width: 77px;
+  margin: 0 auto 18px;
+}
+.switch-game-card .button {
+  margin-top: 17px;
+  font-size: 12px;
+}
+.switch-game-card .button + .button {
+  margin-top: 10px;
+}
+.hand-filter-note {
+  font-size: 9px !important;
+  line-height: 1.8 !important;
+  color: #879c78 !important;
+  background: #edf1e4;
+  border-radius: 9px;
+  padding: 12px;
+  margin: 13px 0 !important;
+}
+.grownup-fold .exercise-choices {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (max-width: 1190px) {
+  .game-tabs {
+    gap: 9px;
+  }
+  .game-tab {
+    padding: 11px 10px;
+    gap: 8px;
+  }
+  .game-tab-art,
+  .game-tab-art > svg {
+    height: 39px;
+    width: 39px;
+  }
+  .game-tab-copy strong {
+    font-size: 11px;
+  }
+  .game-tab-copy small {
+    font-size: 7px;
+  }
+  .tab-selected-mark {
+    font-size: 11px;
+  }
+}
+@media (max-width: 850px) {
+  .forest-games {
+    margin-bottom: 21px;
+  }
+  .game-tab {
+    min-height: 77px;
+    gap: 7px;
+  }
+  .game-tab-copy strong {
+    font-size: 10px;
+  }
+  .game-tab-copy small {
+    font-size: 6px;
+    line-height: 1.4;
+  }
+  .game-tab-art,
+  .game-tab-art > svg {
+    height: 34px;
+    width: 34px;
+  }
+  .tab-selected-mark {
+    display: none;
+  }
+  .watch-again-button {
+    font-size: 7px;
+  }
+  .game-tabs {
+    gap: 8px;
+  }
+  .movement-lesson h2 {
+    font-size: 25px;
+  }
+}
+@media (max-width: 620px) {
+  .game-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .game-tab {
+    min-height: 67px;
+    padding: 9px 11px;
+    gap: 9px;
+    border-radius: 14px;
+  }
+  .game-tab-copy strong {
+    font-size: 11px;
+  }
+  .game-tab-copy small {
+    font-size: 7px;
+  }
+  .game-tab-art,
+  .game-tab-art > svg {
+    height: 36px;
+    width: 36px;
+  }
+  .games-label {
+    font-size: 8px;
+    margin-bottom: 9px;
+  }
+  .forest-games {
+    margin-bottom: 20px;
+  }
+  .tab-selected-mark {
+    display: block;
+    font-size: 11px;
+  }
+  .movement-lesson {
+    padding: 25px;
+  }
+  .lesson-example {
+    margin-top: 17px;
+    padding: 8px;
+  }
+  .lesson-example > .movement-guide {
+    height: 175px;
+    max-width: 245px;
+  }
+  .movement-lesson h2 {
+    font-size: 24px;
+  }
+  .lesson-steps > li {
+    font-size: 11px;
+  }
+  .lesson-steps b {
+    height: 23px;
+    width: 23px;
+    font-size: 11px;
+  }
+  .movement-lesson .lesson-reassurance {
+    font-size: 8px;
+  }
+  .watch-again-button {
+    font-size: 6px;
+    margin-top: 6px;
+  }
+  .switch-game-card h2 {
+    font-size: 25px;
+  }
+  .switch-game-card > p {
+    font-size: 11px;
+  }
+}
+@media (max-width: 380px) {
+  .game-tab {
+    padding: 8px;
+    gap: 6px;
+  }
+  .game-tab-art,
+  .game-tab-art > svg {
+    height: 31px;
+    width: 31px;
+  }
+  .game-tab-copy strong {
+    font-size: 10px;
+  }
+  .game-tab-copy small {
+    font-size: 6px;
+  }
+  .tab-selected-mark {
+    display: none;
+  }
+}

@@ -1,4 +1,6 @@
-import { exercises } from "./movement/exercises";
+import { GameTabs } from "./components/GameTabs";
+import { MovementLesson } from "./components/MovementLesson";
+import { exercises, type Exercise } from "./movement/exercises";
 import { MovementGuide } from "./components/MovementGuide";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -47,6 +49,8 @@ export default function App() {
     [practiceUp, setPracticeUp] = useState(false),
     [practiceDone, setPracticeDone] = useState(false),
     [endingReady, setEndingReady] = useState(false);
+  const [switchTarget, setSwitchTarget] = useState<Exercise | null>(null);
+  const [showLesson, setShowLesson] = useState(false);
   const tracking = useTracking(settings.arm, undefined, settings.exercise),
     session = useSession(settings, tracking.frame, tracking.status === "on");
   const previousArm = useRef(settings.arm);
@@ -79,6 +83,8 @@ export default function App() {
     }
   }, [session.position, session.phase, session.waiting, practiceUp]);
   const anyModal =
+    !!switchTarget ||
+    showLesson ||
     showSettings ||
     showDetails ||
     session.phase === "setup" ||
@@ -125,7 +131,7 @@ export default function App() {
       document.removeEventListener("keydown", trap);
       previous?.focus();
     };
-  }, [anyModal, showSettings, showDetails]);
+  }, [anyModal, showSettings, showDetails, switchTarget, showLesson]);
   const startDemo = () => {
     tracking.stop();
     setCameraOff(false);
@@ -143,6 +149,29 @@ export default function App() {
     tracking.stop();
     session.reset("welcome");
     setCameraOff(false);
+  };
+  const enterGame = (next: Exercise) => {
+    if (session.seconds > 0 || session.cycles > 0) session.finish(false);
+    tracking.stop();
+    session.reset("welcome");
+    setSettings((current) => ({ ...current, exercise: next }));
+    setSwitchTarget(null);
+    setShowLesson(false);
+  };
+  const selectGame = (next: Exercise) => {
+    if (next === settings.exercise) return;
+    if (
+      session.phase === "playing" &&
+      (session.seconds > 0 || session.cycles > 0)
+    ) {
+      session.transition("paused");
+      setSwitchTarget(next);
+    } else enterGame(next);
+  };
+  const watchLesson = () => {
+    if (session.phase === "playing" || session.phase === "practice")
+      session.transition("paused");
+    setShowLesson(true);
   };
   const toggleSound = () => {
     audio.start();
@@ -164,6 +193,23 @@ export default function App() {
     "The whispering woods",
     "The lantern grove",
   ];
+  const previousPhase = useRef(session.phase);
+  useEffect(() => {
+    const was = previousPhase.current;
+    previousPhase.current = session.phase;
+    if (
+      (session.phase === "practice" || session.phase === "playing") &&
+      was !== session.phase &&
+      was !== "paused" &&
+      window.innerWidth < 620
+    )
+      document
+        .getElementById("forest-game-panel")
+        ?.scrollIntoView({
+          block: "start",
+          behavior: settings.reducedMotion ? "auto" : "smooth",
+        });
+  }, [session.phase, settings.reducedMotion]);
   const isHome = ["welcome", "setup", "calibration"].includes(session.phase);
   const progress = Math.min(100, (session.cycles / settings.target) * 100);
   const [tip, setTip] = useState(0);
@@ -209,7 +255,12 @@ export default function App() {
           </button>
         </div>
       </header>
-      <main>
+      <GameTabs selected={settings.exercise} onSelect={selectGame} />
+      <main
+        id="forest-game-panel"
+        role="tabpanel"
+        aria-labelledby={`game-tab-${settings.exercise}`}
+      >
         {isHome ? (
           <>
             <div className="welcome-scene">
@@ -225,14 +276,14 @@ export default function App() {
                   <span /> YOUR MOVEMENT MAKES THE MAGIC
                 </div>
                 <h1>
-                  Little hands.
+                  {exercises[settings.exercise].hero[0]}
                   <br />
-                  <em>Big magic.</em>
+                  <em>{exercises[settings.exercise].hero[1]}</em>
                 </h1>
                 <p>
-                  Sleepy flowers need a little magic.
+                  {exercises[settings.exercise].intro}
                   <br />
-                  Open your hand. Make the forest bloom.
+                  {exercises[settings.exercise].promise}
                 </p>
                 <div className="hero-buttons">
                   <button className="button primary" onClick={startCamera}>
@@ -373,6 +424,13 @@ export default function App() {
                   </div>
                   <div className="game-hud-buttons">
                     <button
+                      className="round-button lesson-help-button"
+                      aria-label="Show me how to play"
+                      onClick={watchLesson}
+                    >
+                      ?
+                    </button>
+                    <button
                       aria-label="Pause adventure"
                       className="round-button"
                       onClick={() => session.transition("paused")}
@@ -439,11 +497,13 @@ export default function App() {
                         : "Reconnect your camera to keep exploring."}
                     </p>
                     <span>
-                      {settings.exercise === "grip"
-                        ? "Show your palm and fingertips to the camera."
-                        : settings.exercise === "reach"
-                          ? "Let the camera see your shoulders and hand."
-                          : "Bring your shoulder, elbow, and wrist into view."}
+                      {settings.exercise === "wrist"
+                        ? "Show your wrist and knuckles to the camera."
+                        : settings.exercise === "grip"
+                          ? "Show your palm and fingertips to the camera."
+                          : settings.exercise === "reach"
+                            ? "Let the camera see your shoulders and hand."
+                            : "Bring your shoulder, elbow, and wrist into view."}
                     </span>
                     {tracking.status !== "on" && (
                       <button
@@ -469,20 +529,16 @@ export default function App() {
                       {practiceDone
                         ? "You did it, little light keeper!"
                         : practiceUp
-                          ? settings.exercise === "grip"
-                            ? "Now close it softly…"
-                            : "And softly back down…"
-                          : settings.exercise === "grip"
-                            ? "Open your hand. Hello, flower!"
-                            : settings.exercise === "reach"
-                              ? "Reach for the little light!"
-                              : "Give Luma a little lift!"}
+                          ? exercises[settings.exercise].down
+                          : exercises[settings.exercise].up}
                     </h3>
                     <p>
                       {practiceDone
                         ? settings.exercise === "grip"
                           ? "Ready to wake the sleepy flowers?"
-                          : "Ready to bring the fireflies home?"
+                          : settings.exercise === "wrist"
+                            ? "Ready to give a butterfly a breeze?"
+                            : "Ready to bring the fireflies home?"
                         : session.mode === "demo"
                           ? practiceUp
                             ? "Press ↓ or move the slider down."
@@ -498,7 +554,9 @@ export default function App() {
                       >
                         {settings.exercise === "grip"
                           ? "Let’s wake the flowers!"
-                          : "Let’s find the fireflies"}{" "}
+                          : settings.exercise === "wrist"
+                            ? "Let’s help the butterflies!"
+                            : "Let’s find the fireflies"}{" "}
                         <ArrowRight size={16} />
                       </button>
                     )}
@@ -528,6 +586,7 @@ export default function App() {
                 )}
               </section>
               <InputPanel
+                onLesson={watchLesson}
                 exercise={settings.exercise}
                 session={session}
                 tracking={tracking}
@@ -625,6 +684,8 @@ export default function App() {
       )}
       {session.phase === "paused" &&
         !showSettings &&
+        !showLesson &&
+        !switchTarget &&
         !showDetails &&
         !cameraOff && (
           <div className="modal-backdrop rest-backdrop">
@@ -778,6 +839,45 @@ export default function App() {
             </button>
             <button className="text-button centered" onClick={home}>
               <Home size={14} /> Back to home
+            </button>
+          </section>
+        </div>
+      )}
+      {showLesson && (
+        <MovementLesson
+          exercise={settings.exercise}
+          onClose={() => setShowLesson(false)}
+          onTry={() => {
+            setShowLesson(false);
+            session.resume();
+          }}
+        />
+      )}
+      {switchTarget && (
+        <div className="modal-backdrop">
+          <section
+            className="modal switch-game-card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="switch-game-title"
+          >
+            <Portrait />
+            <h2 id="switch-game-title">A different kind of magic?</h2>
+            <p>
+              Luma will finish this adventure for now. A fresh little journey is
+              waiting in {exercises[switchTarget].tab}.
+            </p>
+            <button
+              className="button primary full"
+              onClick={() => enterGame(switchTarget)}
+            >
+              Try {exercises[switchTarget].tab} <ArrowRight size={16} />
+            </button>
+            <button
+              className="button secondary full"
+              onClick={() => setSwitchTarget(null)}
+            >
+              Stay with this adventure
             </button>
           </section>
         </div>
