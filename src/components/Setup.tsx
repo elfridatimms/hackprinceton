@@ -19,6 +19,7 @@ import type { Settings, Session } from "../game/session";
 import type { Tracking } from "../movement/useTracking";
 import { SeatIllustration } from "./Illustrations";
 import { CameraFeed } from "./CameraPanel";
+import {CameraDiagnostics} from "./CameraDiagnostics";
 export function Setup({
   session,
   settings,
@@ -195,7 +196,7 @@ export function Setup({
         ) : stage === 1 ? (
           <>
             <div className="setup-camera">
-              {tracking.status === "on" ? (
+              {tracking.video.current?.srcObject ? (
                 <CameraFeed tracking={tracking} arm={settings.arm} />
               ) : (
                 <div className="camera-loading">
@@ -409,6 +410,7 @@ export function Setup({
             </button>
           </>
         )}
+        {stage>0&&<CameraDiagnostics tracking={tracking} onRestart={()=>{setLower(null);setEndpoint('lower');setCaptureError('');resetHold();void tracking.start();}}/>}
       </section>
     </div>
   );

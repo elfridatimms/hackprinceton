@@ -17,9 +17,11 @@ import type { Session } from "../game/session";
 export function CameraFeed({
   tracking,
   arm,
+  sourceLabel,
 }: {
   tracking: Tracking;
   arm: "left" | "right";
+  sourceLabel?:string;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const frameRef = useRef(tracking.frame);
@@ -87,7 +89,7 @@ export function CameraFeed({
         style={{ transform: "scaleX(-1)" }}
       />
       <span className="live-label">
-        <i /> Live camera
+        <i /> {sourceLabel??(tracking.status==='on'?'Live camera':tracking.status==='loading'?'Starting camera…':'Camera off')}
       </span>
       {!tracking.frame.valid && (
         <span className="camera-hint">
