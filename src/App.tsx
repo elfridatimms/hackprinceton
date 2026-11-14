@@ -1,3 +1,5 @@
+import { exercises } from "./movement/exercises";
+import { MovementGuide } from "./components/MovementGuide";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
@@ -45,7 +47,7 @@ export default function App() {
     [practiceUp, setPracticeUp] = useState(false),
     [practiceDone, setPracticeDone] = useState(false),
     [endingReady, setEndingReady] = useState(false);
-  const tracking = useTracking(settings.arm),
+  const tracking = useTracking(settings.arm, undefined, settings.exercise),
     session = useSession(settings, tracking.frame, tracking.status === "on");
   const previousArm = useRef(settings.arm);
   const modalRef = useRef<HTMLDivElement>(null);
@@ -220,21 +222,21 @@ export default function App() {
               <div className="welcome-wash" />
               <div className="hero-copy">
                 <div className="hero-label">
-                  <span /> A GENTLE MOVEMENT ADVENTURE
+                  <span /> YOUR MOVEMENT MAKES THE MAGIC
                 </div>
                 <h1>
-                  Little movements.
+                  Little hands.
                   <br />
-                  <em>Big adventures.</em>
+                  <em>Big magic.</em>
                 </h1>
                 <p>
-                  A little dragon. A forest full of wonder.
+                  Sleepy flowers need a little magic.
                   <br />
-                  And a little light only you can bring.
+                  Open your hand. Make the forest bloom.
                 </p>
                 <div className="hero-buttons">
                   <button className="button primary" onClick={startCamera}>
-                    Start my adventure <ArrowRight size={19} />
+                    Let’s play with Luma <ArrowRight size={19} />
                   </button>
                   <button className="hero-demo" onClick={startDemo}>
                     Try without a camera <ArrowUpRight size={16} />
@@ -335,7 +337,9 @@ export default function App() {
                 <span />{" "}
                 {session.mode === "demo"
                   ? "Keyboard & slider"
-                  : settings.arm + " arm"}
+                  : settings.exercise === "grip"
+                    ? "One playing hand"
+                    : settings.arm + " arm"}
               </span>
             </div>
             <div
@@ -395,6 +399,32 @@ export default function App() {
                   <strong>{session.fireflies}</strong>
                   <span>little lights</span>
                 </div>
+                {settings.exercise === "grip" && (
+                  <div
+                    className="little-flower-patch"
+                    aria-label={`${session.cycles} of ${settings.target} flowers woken`}
+                  >
+                    <span className="patch-title">
+                      YOUR LITTLE FLOWER PATCH
+                    </span>
+                    <div>
+                      {Array.from(
+                        { length: Math.min(16, settings.target) },
+                        (_, i) => (
+                          <i
+                            key={i}
+                            className={i < session.cycles ? "bloom-awake" : ""}
+                          >
+                            ✿
+                          </i>
+                        ),
+                      )}
+                    </div>
+                    <small>
+                      {session.cycles} / {settings.target} little blooms
+                    </small>
+                  </div>
+                )}
                 {session.waiting && session.phase !== "paused" && (
                   <div className="tracking-wait">
                     <span className="wait-icon">
@@ -409,7 +439,11 @@ export default function App() {
                         : "Reconnect your camera to keep exploring."}
                     </p>
                     <span>
-                      Bring your shoulder, elbow, and wrist into view.
+                      {settings.exercise === "grip"
+                        ? "Show your palm and fingertips to the camera."
+                        : settings.exercise === "reach"
+                          ? "Let the camera see your shoulders and hand."
+                          : "Bring your shoulder, elbow, and wrist into view."}
                     </span>
                     {tracking.status !== "on" && (
                       <button
@@ -423,31 +457,49 @@ export default function App() {
                 )}
                 {session.phase === "practice" && !session.waiting && (
                   <div className="practice-card">
-                    <span className="eyebrow">A LITTLE PRACTICE</span>
+                    <div className="practice-guide">
+                      <MovementGuide
+                        exercise={settings.exercise}
+                        direction={practiceUp ? "down" : "up"}
+                        compact
+                      />
+                    </div>
+                    <span className="eyebrow">YOUR LITTLE MAGIC MOVE</span>
                     <h3>
                       {practiceDone
-                        ? "You and Luma make a lovely team."
+                        ? "You did it, little light keeper!"
                         : practiceUp
-                          ? "Now gently lower it."
-                          : "Let’s give Luma a little lift."}
+                          ? settings.exercise === "grip"
+                            ? "Now close it softly…"
+                            : "And softly back down…"
+                          : settings.exercise === "grip"
+                            ? "Open your hand. Hello, flower!"
+                            : settings.exercise === "reach"
+                              ? "Reach for the little light!"
+                              : "Give Luma a little lift!"}
                     </h3>
                     <p>
                       {practiceDone
-                        ? "Ready to bring the fireflies home?"
+                        ? settings.exercise === "grip"
+                          ? "Ready to wake the sleepy flowers?"
+                          : "Ready to bring the fireflies home?"
                         : session.mode === "demo"
                           ? practiceUp
                             ? "Press ↓ or move the slider down."
                             : "Press ↑ or move the slider up."
                           : practiceUp
-                            ? "Gently lower your hand to fly down."
-                            : "Bend your elbow to help Luma fly up."}
+                            ? exercises[settings.exercise].down
+                            : exercises[settings.exercise].up}
                     </p>
                     {practiceDone && (
                       <button
                         className="button primary"
                         onClick={() => session.reset("playing")}
                       >
-                        Let’s find the fireflies <ArrowRight size={16} />
+                        {settings.exercise === "grip"
+                          ? "Let’s wake the flowers!"
+                          : "Let’s find the fireflies"}{" "}
+                        <ArrowRight size={16} />
                       </button>
                     )}
                   </div>
@@ -476,6 +528,7 @@ export default function App() {
                 )}
               </section>
               <InputPanel
+                exercise={settings.exercise}
                 session={session}
                 tracking={tracking}
                 arm={settings.arm}
@@ -506,7 +559,11 @@ export default function App() {
                   {session.cycles}
                   <small> / {settings.target}</small>
                 </strong>
-                <span>complete cycles</span>
+                <span>
+                  {settings.exercise === "grip"
+                    ? "flowers woken"
+                    : "complete cycles"}
+                </span>
               </div>
               <div className="bottom-stat time-stat">
                 <strong>{formatTime(session.seconds)}</strong>
@@ -517,8 +574,12 @@ export default function App() {
                 {session.mode === "demo"
                   ? "Demo input"
                   : session.waiting
-                    ? "Finding your arm"
-                    : "Arm in view"}
+                    ? settings.exercise === "grip"
+                      ? "Finding your hand"
+                      : "Finding your arm"
+                    : settings.exercise === "grip"
+                      ? "Hand in view"
+                      : "Arm in view"}
               </div>
               <button
                 className="break-button"
@@ -680,7 +741,11 @@ export default function App() {
             <div className="result-stats">
               <div>
                 <strong>{session.summary.cycles}</strong>
-                <span>complete cycles</span>
+                <span>
+                  {settings.exercise === "grip"
+                    ? "flowers woken"
+                    : "complete cycles"}
+                </span>
               </div>
               <div>
                 <strong>{formatTime(session.summary.seconds)}</strong>

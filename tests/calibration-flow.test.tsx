@@ -84,7 +84,7 @@ describe("The calibration screen that previously trapped the user", () => {
     host = document.createElement("div");
     document.body.append(host);
     root = createRoot(host);
-    settings = { ...defaultSettings };
+    settings = { ...defaultSettings, exercise: "elbow" };
     tracking = {
       status: "on",
       error: "",
@@ -143,6 +143,8 @@ describe("The calibration screen that previously trapped the user", () => {
         frame: {
           ...tracking.frame,
           angle: valid ? angle : null,
+          openness: valid ? angle : null,
+          height: valid ? angle : null,
           valid,
           at: performance.now(),
         },
@@ -151,8 +153,9 @@ describe("The calibration screen that previously trapped the user", () => {
     }
   }
   function button(text: string) {
-    return Array.from(host.querySelectorAll("button")).find((b) =>
-      b.textContent?.includes(text),
+    return Array.from(host.querySelectorAll("button")).find(
+      (b) =>
+        b.textContent?.includes(text) || b.getAttribute("aria-label") === text,
     )!;
   }
   function click(text: string) {
@@ -160,17 +163,17 @@ describe("The calibration screen that previously trapped the user", () => {
   }
   it("keeps the actual camera canvas, arm choice and explicit demo exit visible during calibration", () => {
     expect(host.querySelector("canvas")).not.toBeNull();
-    expect(button("Left arm")).toBeTruthy();
-    expect(button("Try without a camera")).toBeTruthy();
+    expect(button("Left hand")).toBeTruthy();
+    expect(button("Play with buttons")).toBeTruthy();
     expect(button("Remember this position").disabled).toBe(true);
-    click("Try without a camera");
+    click("Play with buttons");
     expect(onDemo).toHaveBeenCalledOnce();
   });
   it("captures low → tracking lost → recovered high and reaches practice", () => {
     frames(150);
     expect(button("Remember this position").disabled).toBe(false);
     click("Remember this position");
-    expect(host.textContent).toContain("POSITION 2 OF 2");
+    expect(host.textContent).toContain("Reach for a little light.");
     frames(65, false, 1);
     expect(button("Remember this position").disabled).toBe(true);
     frames(65);
@@ -192,9 +195,9 @@ describe("The calibration screen that previously trapped the user", () => {
   it("resets both endpoint history and capture readiness after an explicit arm switch", () => {
     frames(150);
     click("Remember this position");
-    click("Left arm");
+    click("Left hand");
     expect(settings.arm).toBe("left");
-    expect(host.textContent).toContain("POSITION 1 OF 2");
+    expect(host.textContent).toContain("Find your cozy spot.");
     expect(button("Remember this position").disabled).toBe(true);
   });
   it("offers a configured range but still requires current valid tracking", () => {
@@ -212,9 +215,30 @@ describe("The calibration screen that previously trapped the user", () => {
     click("Remember this position");
     frames(92);
     click("Remember this position");
-    expect(host.textContent).toContain("only 3.0° apart");
+    expect(host.textContent).toContain("two spots are very close");
     expect(reset).not.toHaveBeenCalled();
-    click("Try without a camera");
+    click("Play with buttons");
     expect(onDemo).toHaveBeenCalledOnce();
+  });
+  it("calibrates a softly closed and comfortably open hand without exposing angles to the child", () => {
+    settings = { ...settings, exercise: "grip" };
+    render();
+    frames(1.05);
+    expect(host.textContent).toContain("A soft, sleepy hand.");
+    expect(
+      host.querySelector(".child-calibration-visual")?.textContent,
+    ).not.toContain("°");
+    click("Remember this position");
+    frames(2.1);
+    expect(host.textContent).toContain("Let your flower say hello!");
+    click("Remember this position");
+    expect(save).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        exercise: "grip",
+        gripLower: 1.05,
+        gripUpper: 2.1,
+      }),
+    );
+    expect(reset).toHaveBeenCalledWith("practice");
   });
 });

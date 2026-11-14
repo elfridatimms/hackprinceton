@@ -7,6 +7,12 @@ import {
   ChevronRight,
   ShieldCheck,
 } from "lucide-react";
+import {
+  exercises,
+  validReachRange,
+  validGripRange,
+  type Exercise,
+} from "../movement/exercises";
 import { validRange } from "../movement/core";
 import type { Settings as Config, Summary } from "../game/session";
 export function Settings({
@@ -26,7 +32,13 @@ export function Settings({
     [cleared, setCleared] = useState(false);
   const set = <K extends keyof Config>(key: K, value: Config[K]) =>
     setDraft((s) => ({ ...s, [key]: value }));
-  const valid = validRange(draft.lower, draft.upper);
+  const reach = draft.exercise === "reach";
+  const grip = draft.exercise === "grip";
+  const valid = grip
+    ? validGripRange(draft.gripLower, draft.gripUpper)
+    : reach
+      ? validReachRange(draft.reachLower, draft.reachUpper)
+      : validRange(draft.lower, draft.upper);
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <section
@@ -52,15 +64,31 @@ export function Settings({
         <p className="modal-intro">
           Make this little adventure feel just right.
         </p>
+        <label className="exercise-setting">
+          Movement game
+          <select
+            value={draft.exercise}
+            onChange={(e) => set("exercise", e.target.value as Exercise)}
+          >
+            <option value="grip">Wake a sleepy flower · open & close</option>
+            <option value="reach">Catch a firefly · reach & return</option>
+            <option value="elbow">Give Luma a lift · bend & return</option>
+          </select>
+        </label>
         <div className="settings-grid">
           <label>
-            Arm to follow
+            {grip ? "Playing hand" : "Arm to follow"}
             <select
               value={draft.arm}
+              disabled={grip}
               onChange={(e) => set("arm", e.target.value as Config["arm"])}
             >
-              <option value="right">Right arm</option>
-              <option value="left">Left arm</option>
+              <option value="right">
+                {grip ? "The one hand you show" : "Right arm"}
+              </option>
+              <option value="left">
+                {grip ? "The one hand you show" : "Left arm"}
+              </option>
             </select>
           </label>
           <label>
@@ -77,36 +105,71 @@ export function Settings({
             </select>
           </label>
           <label>
-            Lower position (extended)
+            {grip
+              ? "Softly closed hand"
+              : reach
+                ? "Resting hand level"
+                : "Lower position (extended)"}
             <div className="number-input">
               <input
                 type="number"
-                min={15}
-                max={180}
-                value={draft.lower}
-                onChange={(e) => set("lower", +e.target.value)}
+                min={grip ? 0 : reach ? -4 : 15}
+                max={grip ? 5 : reach ? 4 : 180}
+                step={grip || reach ? 0.05 : 1}
+                value={
+                  grip
+                    ? draft.gripLower
+                    : reach
+                      ? draft.reachLower
+                      : draft.lower
+                }
+                onChange={(e) =>
+                  set(
+                    grip ? "gripLower" : reach ? "reachLower" : "lower",
+                    +e.target.value,
+                  )
+                }
               />
-              <span>degrees</span>
+              <span>{grip || reach ? "relative" : "degrees"}</span>
             </div>
           </label>
           <label>
-            Upper position (bent)
+            {grip
+              ? "Comfortably open hand"
+              : reach
+                ? "Raised hand level"
+                : "Upper position (bent)"}
             <div className="number-input">
               <input
                 type="number"
-                min={10}
-                max={175}
-                value={draft.upper}
-                onChange={(e) => set("upper", +e.target.value)}
+                min={grip ? 0 : reach ? -4 : 10}
+                max={grip ? 5 : reach ? 4 : 175}
+                step={grip || reach ? 0.05 : 1}
+                value={
+                  grip
+                    ? draft.gripUpper
+                    : reach
+                      ? draft.reachUpper
+                      : draft.upper
+                }
+                onChange={(e) =>
+                  set(
+                    grip ? "gripUpper" : reach ? "reachUpper" : "upper",
+                    +e.target.value,
+                  )
+                }
               />
-              <span>degrees</span>
+              <span>{grip || reach ? "relative" : "degrees"}</span>
             </div>
           </label>
         </div>
         {!valid && (
           <p className="error-message">
-            Use a lower-position angle at least 5° larger than the
-            upper-position angle (10–180°).
+            {grip
+              ? "The open hand level must be at least 0.2 above the closed level (0–5)."
+              : reach
+                ? "The raised hand level must be at least 0.12 above the resting level (−4 to 4)."
+                : "Use a lower-position angle at least 5° larger than the upper-position angle (10–180°)."}
           </p>
         )}
         <div className="setting-row">
@@ -173,10 +236,10 @@ export function Settings({
         <div className="grownup-note">
           <ShieldCheck size={20} />
           <p>
-            Use a side-on camera view with the shoulder, elbow, and wrist
-            visible. This is a projected movement estimate, not a validated
-            clinical measurement. For rehabilitation, choose the exercise and
-            comfortable limits with the treating professional.
+            {exercises[draft.exercise].camera} This is a projected movement
+            estimate, not a validated clinical measurement. For rehabilitation,
+            choose the exercise and comfortable limits with the treating
+            professional.
           </p>
         </div>
         <div className="settings-links">
@@ -303,7 +366,7 @@ export function SessionDetails({
             <p>
               {data.mode === "demo"
                 ? "Demo controls · keyboard & slider"
-                : "Camera mode · projected elbow movement"}{" "}
+                : "Camera mode · projected movement"}{" "}
               · {data.finished ? "Journey completed" : "Finished for now"}
             </p>
             <div className="result-stats">
@@ -320,6 +383,9 @@ export function SessionDetails({
                 <span>fireflies found</span>
               </div>
             </div>
+            <p className="small">
+              Movement game: {exercises[data.exercise ?? "elbow"].title}
+            </p>
             <Trace summary={data} />
             <p className="small">
               {data.mode === "demo"

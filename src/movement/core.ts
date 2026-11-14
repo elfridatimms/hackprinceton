@@ -9,6 +9,8 @@ export type Arm = "left" | "right";
 export type TrackingFrame = {
   valid: boolean;
   angle: number | null;
+  height?: number | null;
+  openness?: number | null;
   at: number;
   points: Landmark[];
   message: string;

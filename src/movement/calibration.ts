@@ -3,13 +3,17 @@ export const FRAME_MAX_AGE_MS = 450;
 export const CALIBRATION_WINDOW_MS = 1600;
 export const CALIBRATION_HOLD_MS = 650;
 /** A time window, not a camera frame-rate requirement. Missing frames are never invented. */
-export function calibrationEstimate(samples: AngleSample[], now: number) {
+export function calibrationEstimate(
+  samples: AngleSample[],
+  now: number,
+  options = { min: 0, max: 180, spread: 6, precision: 10 },
+) {
   const recent = samples
     .filter(
       (s) =>
         Number.isFinite(s.angle) &&
-        s.angle >= 0 &&
-        s.angle <= 180 &&
+        s.angle >= options.min &&
+        s.angle <= options.max &&
         now >= s.at &&
         now - s.at <= CALIBRATION_WINDOW_MS,
     )
@@ -26,13 +30,15 @@ export function calibrationEstimate(samples: AngleSample[], now: number) {
   const spread =
     sorted[Math.floor(sorted.length * 0.9)] -
     sorted[Math.floor(sorted.length * 0.1)];
-  if (spread > 6) return { angle: null, progress: 0 };
+  if (spread > options.spread) return { angle: null, progress: 0 };
   const elapsed = continuous.at(-1)!.at - continuous[0].at;
   const progress = Math.min(1, elapsed / CALIBRATION_HOLD_MS);
   return {
     angle:
       progress === 1
-        ? Math.round(sorted[Math.floor(sorted.length / 2)] * 10) / 10
+        ? Math.round(
+            sorted[Math.floor(sorted.length / 2)] * options.precision,
+          ) / options.precision
         : null,
     progress,
   };

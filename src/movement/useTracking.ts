@@ -1,12 +1,18 @@
+import {
+  handHeight,
+  handOpenness,
+  reachTrackingMessage,
+  type Exercise,
+} from "./exercises";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { PoseLandmarker } from "@mediapipe/tasks-vision";
+import type { PoseLandmarker, HandLandmarker } from "@mediapipe/tasks-vision";
 import {
   armTrackingMessage,
   elbowAngle,
   type Arm,
   type TrackingFrame,
 } from "./core";
-import {FRAME_MAX_AGE_MS} from "./calibration";
+import { FRAME_MAX_AGE_MS } from "./calibration";
 const EMPTY: TrackingFrame = {
   valid: false,
   angle: null,
@@ -14,25 +20,57 @@ const EMPTY: TrackingFrame = {
   points: [],
   message: "Camera is off",
 };
-export type TrackingDiagnostics={build:string;stage:string;engine:string;video:string;inferenceMs:number|null;frames:number;lastError:string};
-const requestCameraStream=()=>navigator.mediaDevices.getUserMedia({audio:false,video:{width:{ideal:1280},height:{ideal:720},facingMode:'user'}});
-export function useTracking(arm: Arm,requestStream:()=>Promise<MediaStream>=requestCameraStream) {
+export type TrackingDiagnostics = {
+  build: string;
+  stage: string;
+  engine: string;
+  video: string;
+  inferenceMs: number | null;
+  frames: number;
+  lastError: string;
+};
+const requestCameraStream = () =>
+  navigator.mediaDevices.getUserMedia({
+    audio: false,
+    video: {
+      width: { ideal: 1280 },
+      height: { ideal: 720 },
+      facingMode: "user",
+    },
+  });
+export function useTracking(
+  arm: Arm,
+  requestStream: () => Promise<MediaStream> = requestCameraStream,
+  exercise: Exercise = "elbow",
+) {
   const [status, setStatus] = useState<"off" | "loading" | "on" | "error">(
     "off",
   );
   const [error, setError] = useState("");
   const [frame, setFrame] = useState<TrackingFrame>(EMPTY);
-  const diagnostics=useRef<TrackingDiagnostics>({build:'camera-3',stage:'Camera off',engine:'CPU',video:'—',inferenceMs:null,frames:0,lastError:''});
+  const diagnostics = useRef<TrackingDiagnostics>({
+    build: "camera-3",
+    stage: "Camera off",
+    engine: "CPU",
+    video: "—",
+    inferenceMs: null,
+    frames: 0,
+    lastError: "",
+  });
   const video = useRef<HTMLVideoElement | null>(null),
     stream = useRef<MediaStream | null>(null),
-    model = useRef<PoseLandmarker | null>(null),
+    model = useRef<PoseLandmarker | HandLandmarker | null>(null),
     timer = useRef<ReturnType<typeof setTimeout> | null>(null),
     generation = useRef(0),
     armRef = useRef(arm);
+  const lockedHand = useRef<string | null>(null);
+  const modelExercise = useRef<Exercise | null>(null);
   armRef.current = arm;
+  const exerciseRef = useRef(exercise);
+  exerciseRef.current = exercise;
   useEffect(() => {
     setFrame({ ...EMPTY, message: `Finding your ${arm} arm…` });
-  }, [arm]);
+  }, [arm, exercise]);
   const stop = useCallback(() => {
     generation.current++;
     if (timer.current) clearTimeout(timer.current);
@@ -40,8 +78,15 @@ export function useTracking(arm: Arm,requestStream:()=>Promise<MediaStream>=requ
     stream.current = null;
     model.current?.close();
     model.current = null;
-    if (video.current) {video.current.pause();video.current.srcObject=null;video.current.remove();video.current=null;}
-    diagnostics.current.stage='Camera off';
+    if (video.current) {
+      video.current.pause();
+      video.current.srcObject = null;
+      video.current.remove();
+      video.current = null;
+    }
+    diagnostics.current.stage = "Camera off";
+    lockedHand.current = null;
+    modelExercise.current = null;
     setFrame(EMPTY);
     setStatus("off");
   }, []);
@@ -50,10 +95,18 @@ export function useTracking(arm: Arm,requestStream:()=>Promise<MediaStream>=requ
     const id = generation.current;
     setStatus("loading");
     setError("");
-    diagnostics.current={build:'camera-3',stage:'Waiting for camera permission',engine:'CPU',video:'—',inferenceMs:null,frames:0,lastError:''};
-    let pendingVideo:HTMLVideoElement|null=null;
+    diagnostics.current = {
+      build: "camera-3",
+      stage: "Waiting for camera permission",
+      engine: "CPU",
+      video: "—",
+      inferenceMs: null,
+      frames: 0,
+      lastError: "",
+    };
+    let pendingVideo: HTMLVideoElement | null = null;
     let pending: MediaStream | null = null;
-    let pendingModel: PoseLandmarker | null = null;
+    let pendingModel: PoseLandmarker | HandLandmarker | null = null;
     try {
       if (!navigator.mediaDevices?.getUserMedia)
         throw new Error(
@@ -65,9 +118,12 @@ export function useTracking(arm: Arm,requestStream:()=>Promise<MediaStream>=requ
         return;
       }
       stream.current = pending;
-      const el = document.createElement("video");pendingVideo=el;
-      el.setAttribute('aria-hidden','true');el.tabIndex=-1;
-      el.style.cssText='position:fixed;left:0;bottom:0;width:1px;height:1px;pointer-events:none;opacity:0.01';
+      const el = document.createElement("video");
+      pendingVideo = el;
+      el.setAttribute("aria-hidden", "true");
+      el.tabIndex = -1;
+      el.style.cssText =
+        "position:fixed;left:0;bottom:0;width:1px;height:1px;pointer-events:none;opacity:0.01";
       document.body.appendChild(el);
       el.autoplay = true;
       el.playsInline = true;
@@ -75,11 +131,15 @@ export function useTracking(arm: Arm,requestStream:()=>Promise<MediaStream>=requ
       el.srcObject = pending;
       video.current = el;
       await el.play();
-      if(id!==generation.current){el.remove();pending.getTracks().forEach(t=>t.stop());return;}
-      diagnostics.current.stage='Loading arm tracker';
-      diagnostics.current.video=`${el.videoWidth} × ${el.videoHeight}`;
-      setFrame({...EMPTY,message:'Camera is on. Loading arm tracking…'});
-      const { FilesetResolver, PoseLandmarker } =
+      if (id !== generation.current) {
+        el.remove();
+        pending.getTracks().forEach((t) => t.stop());
+        return;
+      }
+      diagnostics.current.stage = "Loading arm tracker";
+      diagnostics.current.video = `${el.videoWidth} × ${el.videoHeight}`;
+      setFrame({ ...EMPTY, message: "Camera is on. Loading arm tracking…" });
+      const { FilesetResolver, PoseLandmarker, HandLandmarker } =
         await import("@mediapipe/tasks-vision");
       const files = await FilesetResolver.forVisionTasks("/mediapipe/wasm");
       const createModel = (delegate: "GPU" | "CPU") =>
@@ -94,15 +154,33 @@ export function useTracking(arm: Arm,requestStream:()=>Promise<MediaStream>=requ
           minPosePresenceConfidence: 0.3,
           minTrackingConfidence: 0.3,
         });
-      // CPU avoids long WebGL shader compilation and contention with the 3D game.
-      pendingModel=await createModel('CPU');
+      // CPU avoids WebGL warm-up. Each exercise uses the model it actually needs.
+      const activeExercise = exerciseRef.current;
+      pendingModel =
+        activeExercise === "grip"
+          ? await HandLandmarker.createFromOptions(files, {
+              baseOptions: {
+                modelAssetPath: "/models/hand_landmarker.task",
+                delegate: "CPU",
+              },
+              runningMode: "VIDEO",
+              numHands: 1,
+              minHandDetectionConfidence: 0.5,
+              minHandPresenceConfidence: 0.5,
+              minTrackingConfidence: 0.5,
+            })
+          : await createModel("CPU");
+
       if (id !== generation.current) {
         pending.getTracks().forEach((t) => t.stop());
         pendingModel.close();
         return;
       }
+      modelExercise.current = activeExercise;
+      diagnostics.current.engine =
+        activeExercise === "grip" ? "CPU · hand tracker" : "CPU · pose tracker";
       model.current = pendingModel;
-      diagnostics.current.stage='Waiting for a visible arm';
+      diagnostics.current.stage = "Waiting for a visible arm";
       setStatus("on");
       let lastTime = -1;
       const infer = () => {
@@ -110,30 +188,82 @@ export function useTracking(arm: Arm,requestStream:()=>Promise<MediaStream>=requ
         try {
           const now = performance.now();
           if (
+            modelExercise.current === exerciseRef.current &&
             el.readyState >= 2 &&
             el.currentTime !== lastTime &&
             !document.hidden
           ) {
             lastTime = el.currentTime;
             const result = model.current!.detectForVideo(el, now);
-            const inferenceMs=performance.now()-now;
-            diagnostics.current.inferenceMs=Math.round(inferenceMs);
+            const inferenceMs = performance.now() - now;
+            diagnostics.current.inferenceMs = Math.round(inferenceMs);
             diagnostics.current.frames++;
             const points = result.landmarks[0] ?? [];
-            const angle = elbowAngle(
-              points,
-              armRef.current,
-              el.videoWidth / el.videoHeight,
-            );
-            const timely=inferenceMs<=FRAME_MAX_AGE_MS;
-            diagnostics.current.stage=!timely?'Camera processing is too slow':angle!==null?'Arm in view':armTrackingMessage(points,armRef.current);
+            const isGrip = exerciseRef.current === "grip";
+            const handedness =
+              "handedness" in result ? result.handedness[0]?.[0] : undefined;
+            const label = handedness?.categoryName ?? null;
+            const confidence = handedness?.score ?? 0;
+            if (
+              isGrip &&
+              label &&
+              confidence >= 0.5 &&
+              lockedHand.current === null
+            )
+              lockedHand.current = label;
+            const sameHand =
+              !isGrip || (!!label && label === lockedHand.current);
+            const openness =
+              isGrip && confidence >= 0.5 && sameHand
+                ? handOpenness(points, el.videoWidth / el.videoHeight)
+                : null;
+            const angle = isGrip
+              ? null
+              : elbowAngle(
+                  points,
+                  armRef.current,
+                  el.videoWidth / el.videoHeight,
+                );
+            const height = isGrip
+              ? null
+              : handHeight(
+                  points,
+                  armRef.current,
+                  el.videoWidth / el.videoHeight,
+                );
+            const isReach = exerciseRef.current === "reach";
+            const detected = isGrip
+              ? openness !== null
+              : isReach
+                ? height !== null
+                : angle !== null;
+            const missing = isGrip
+              ? !sameHand && label
+                ? "Bring your playing hand back."
+                : "Show your palm. Keep your wrist and fingers in the picture."
+              : isReach
+                ? reachTrackingMessage(points, armRef.current)
+                : armTrackingMessage(points, armRef.current);
+            const timely = inferenceMs <= FRAME_MAX_AGE_MS;
+            diagnostics.current.stage = !timely
+              ? "Camera processing is too slow"
+              : detected
+                ? "Arm in view"
+                : missing;
             setFrame({
-              valid: angle !== null&&timely,
-              angle:timely?angle:null,
+              valid: detected && timely,
+              height: timely ? height : null,
+              openness: timely ? openness : null,
+              angle: timely ? angle : null,
               at: now,
               points,
-              message:
-                !timely?'Camera processing is slow. Close other camera apps or try demo controls.':angle!==null?'I can see your arm.':armTrackingMessage(points, armRef.current),
+              message: !timely
+                ? "Camera processing is slow. Close other camera apps or try demo controls."
+                : detected
+                  ? isGrip || isReach
+                    ? "I can see your hand!"
+                    : "I can see your arm."
+                  : missing,
             });
           } else if (!document.hidden) {
             setFrame((previous) =>
@@ -148,8 +278,9 @@ export function useTracking(arm: Arm,requestStream:()=>Promise<MediaStream>=requ
           }
           timer.current = setTimeout(infer, 66);
         } catch (cause) {
-          diagnostics.current.stage='Tracking error';
-          diagnostics.current.lastError=cause instanceof Error?cause.message:String(cause);
+          diagnostics.current.stage = "Tracking error";
+          diagnostics.current.lastError =
+            cause instanceof Error ? cause.message : String(cause);
           setFrame({ ...EMPTY, message: "Let’s adjust the camera." });
           setError(
             "Camera tracking stopped. Reconnect your camera or choose demo controls.",
@@ -172,11 +303,16 @@ export function useTracking(arm: Arm,requestStream:()=>Promise<MediaStream>=requ
       );
     } catch (e) {
       pending?.getTracks().forEach((t) => t.stop());
-      if(pendingVideo){pendingVideo.srcObject=null;pendingVideo.remove();if(video.current===pendingVideo)video.current=null;}
+      if (pendingVideo) {
+        pendingVideo.srcObject = null;
+        pendingVideo.remove();
+        if (video.current === pendingVideo) video.current = null;
+      }
       pendingModel?.close();
-      diagnostics.current.stage='Camera setup error';
-      diagnostics.current.lastError=e instanceof Error?e.message:String(e);
       if (id !== generation.current) return;
+      diagnostics.current.stage = "Camera setup error";
+      diagnostics.current.lastError =
+        e instanceof Error ? e.message : String(e);
       model.current = null;
       stream.current = null;
       setStatus("error");
@@ -190,17 +326,34 @@ export function useTracking(arm: Arm,requestStream:()=>Promise<MediaStream>=requ
               : "The movement model could not load. Please reconnect, or use demo controls.",
       );
     }
-  }, [stop,requestStream]);
+  }, [stop, requestStream]);
+  useEffect(() => {
+    if (model.current && modelExercise.current !== exercise) void start();
+  }, [exercise, start]);
   useEffect(
     () => () => {
       generation.current++;
       if (timer.current) clearTimeout(timer.current);
       stream.current?.getTracks().forEach((t) => t.stop());
       model.current?.close();
-      if(video.current){video.current.pause();video.current.srcObject=null;video.current.remove();}
+      if (video.current) {
+        video.current.pause();
+        video.current.srcObject = null;
+        video.current.remove();
+      }
     },
     [],
   );
-  return { status, error, frame, video, start, stop,diagnostics:diagnostics.current };
+  return {
+    status,
+    error,
+    frame,
+    video,
+    start,
+    stop,
+    diagnostics: diagnostics.current,
+  };
 }
-export type Tracking = Omit<ReturnType<typeof useTracking>,'diagnostics'>&{diagnostics?:TrackingDiagnostics};
+export type Tracking = Omit<ReturnType<typeof useTracking>, "diagnostics"> & {
+  diagnostics?: TrackingDiagnostics;
+};

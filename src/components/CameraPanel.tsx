@@ -1,3 +1,5 @@
+import { MovementGuide } from "./MovementGuide";
+import { exercises, type Exercise } from "../movement/exercises";
 import { useEffect, useRef } from "react";
 import {
   Camera,
@@ -10,7 +12,7 @@ import {
   Hand,
   ShieldCheck,
 } from "lucide-react";
-import {FRAME_MAX_AGE_MS} from "../movement/calibration";
+import { FRAME_MAX_AGE_MS } from "../movement/calibration";
 import { usableLandmark } from "../movement/core";
 import type { Tracking } from "../movement/useTracking";
 import type { Session } from "../game/session";
@@ -18,10 +20,12 @@ export function CameraFeed({
   tracking,
   arm,
   sourceLabel,
+  exercise = "elbow",
 }: {
   tracking: Tracking;
   arm: "left" | "right";
-  sourceLabel?:string;
+  sourceLabel?: string;
+  exercise?: Exercise;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const frameRef = useRef(tracking.frame);
@@ -42,30 +46,85 @@ export function CameraFeed({
           ctx.drawImage(vid, 0, 0, c.width, c.height);
           const frame = frameRef.current;
           if (performance.now() - frame.at < FRAME_MAX_AGE_MS) {
-            const ids = arm === "left" ? [11, 13, 15] : [12, 14, 16];
-            const pts = ids.map((i) => frame.points[i]);
-            ctx.strokeStyle = "#ffdf8b";
-            ctx.lineWidth = 5;
-            ctx.lineCap = "round";
-            for (let i = 0; i < 2; i++) {
-              const a = pts[i],
-                b = pts[i + 1];
-              if (usableLandmark(a) && usableLandmark(b)) {
-                ctx.beginPath();
-                ctx.moveTo(a.x * c.width, a.y * c.height);
-                ctx.lineTo(b.x * c.width, b.y * c.height);
-                ctx.stroke();
+            if (exercise === "grip") {
+              if (frame.valid) {
+                const links = [
+                  [0, 1],
+                  [1, 2],
+                  [2, 3],
+                  [3, 4],
+                  [0, 5],
+                  [5, 6],
+                  [6, 7],
+                  [7, 8],
+                  [5, 9],
+                  [9, 10],
+                  [10, 11],
+                  [11, 12],
+                  [9, 13],
+                  [13, 14],
+                  [14, 15],
+                  [15, 16],
+                  [13, 17],
+                  [0, 17],
+                  [17, 18],
+                  [18, 19],
+                  [19, 20],
+                ];
+                const inside = (p: (typeof frame.points)[number] | undefined) =>
+                  !!p && p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1;
+                ctx.strokeStyle = "#fce6a1";
+                ctx.lineWidth = 3;
+                ctx.lineCap = "round";
+                for (const [a, b] of links) {
+                  const p = frame.points[a],
+                    q = frame.points[b];
+                  if (inside(p) && inside(q)) {
+                    ctx.beginPath();
+                    ctx.moveTo(p.x * c.width, p.y * c.height);
+                    ctx.lineTo(q.x * c.width, q.y * c.height);
+                    ctx.stroke();
+                  }
+                }
+                for (const p of frame.points) {
+                  if (inside(p)) {
+                    ctx.beginPath();
+                    ctx.arc(p.x * c.width, p.y * c.height, 3, 0, Math.PI * 2);
+                    ctx.fillStyle = "#fff2bd";
+                    ctx.fill();
+                  }
+                }
               }
+            } else {
+              const ids =
+                exercise === "reach"
+                  ? arm === "left"
+                    ? [12, 11, 15]
+                    : [11, 12, 16]
+                  : arm === "left"
+                    ? [11, 13, 15]
+                    : [12, 14, 16];
+              const pts = ids.map((i) => frame.points[i]);
+              ctx.strokeStyle = "#ffdf8b";
+              ctx.lineWidth = 5;
+              ctx.lineCap = "round";
+              for (let i = 0; i < 2; i++) {
+                const a = pts[i],
+                  b = pts[i + 1];
+                if (usableLandmark(a) && usableLandmark(b)) {
+                  ctx.beginPath();
+                  ctx.moveTo(a.x * c.width, a.y * c.height);
+                  ctx.lineTo(b.x * c.width, b.y * c.height);
+                  ctx.stroke();
+                }
+              }
+              pts.filter(usableLandmark).forEach((p) => {
+                ctx.beginPath();
+                ctx.arc(p.x * c.width, p.y * c.height, 6, 0, Math.PI * 2);
+                ctx.fillStyle = "#fff4c4";
+                ctx.fill();
+              });
             }
-            pts.filter(usableLandmark).forEach((p) => {
-              ctx.beginPath();
-              ctx.arc(p.x * c.width, p.y * c.height, 6, 0, Math.PI * 2);
-              ctx.fillStyle = "#fff4c4";
-              ctx.fill();
-              ctx.strokeStyle = "#416d58";
-              ctx.lineWidth = 2;
-              ctx.stroke();
-            });
           }
         }
       }
@@ -73,7 +132,7 @@ export function CameraFeed({
     };
     draw();
     return () => cancelAnimationFrame(id);
-  }, [tracking.video, arm]);
+  }, [tracking.video, arm, exercise]);
   return (
     <div
       className="camera-feed"
@@ -89,7 +148,13 @@ export function CameraFeed({
         style={{ transform: "scaleX(-1)" }}
       />
       <span className="live-label">
-        <i /> {sourceLabel??(tracking.status==='on'?'Live camera':tracking.status==='loading'?'Starting camera…':'Camera off')}
+        <i />{" "}
+        {sourceLabel ??
+          (tracking.status === "on"
+            ? "Live camera"
+            : tracking.status === "loading"
+              ? "Starting camera…"
+              : "Camera off")}
       </span>
       {!tracking.frame.valid && (
         <span className="camera-hint">
@@ -108,6 +173,7 @@ export function InputPanel({
   collapsed,
   setCollapsed,
   onCameraOff,
+  exercise = "grip",
 }: {
   session: Session;
   tracking: Tracking;
@@ -115,6 +181,7 @@ export function InputPanel({
   collapsed: boolean;
   setCollapsed: (n: boolean) => void;
   onCameraOff: () => void;
+  exercise?: Exercise;
 }) {
   const demo = session.mode === "demo";
   return (
@@ -130,6 +197,10 @@ export function InputPanel({
       {!collapsed && (
         <>
           <div className="panel-inner">
+            <div className="panel-move-example">
+              <MovementGuide exercise={exercise} compact />
+              <strong>{exercises[exercise].short}</strong>
+            </div>
             {demo ? (
               <>
                 <div className="demo-art">
@@ -143,17 +214,26 @@ export function InputPanel({
                     </kbd>
                   </div>
                 </div>
-                <h3>A little lift. A little lower.</h3>
+                <h3>
+                  {exercise === "grip"
+                    ? "Open. Close. Bloom!"
+                    : "Your little magic move."}
+                </h3>
                 <p>
                   Use your arrow keys, or move the slider. Luma follows you.
                 </p>
                 <label className="demo-slider">
                   <span>
-                    Fly higher <ArrowUp size={14} />
+                    {exercise === "grip" ? "Open the flower" : "Fly higher"}{" "}
+                    <ArrowUp size={14} />
                   </span>
                   <input
                     type="range"
-                    aria-label="Demo flight height"
+                    aria-label={
+                      exercise === "grip"
+                        ? "Demo hand openness"
+                        : "Demo flight height"
+                    }
                     min="0"
                     max="1"
                     step="0.01"
@@ -163,7 +243,8 @@ export function InputPanel({
                     }}
                   />
                   <span>
-                    Fly lower <ArrowDown size={14} />
+                    {exercise === "grip" ? "Close softly" : "Fly lower"}{" "}
+                    <ArrowDown size={14} />
                   </span>
                 </label>
                 <div className="mode-note">
@@ -174,7 +255,7 @@ export function InputPanel({
               </>
             ) : (
               <>
-                <CameraFeed tracking={tracking} arm={arm} />
+                <CameraFeed tracking={tracking} arm={arm} exercise={exercise} />
                 <div
                   className={
                     "tracking-label " + (tracking.frame.valid ? "valid" : "")
@@ -184,7 +265,12 @@ export function InputPanel({
                   {tracking.frame.message}
                 </div>
                 <p className="small">
-                  {arm === "left" ? "Left" : "Right"} arm · Side-on view
+                  {exercise === "grip"
+                    ? "One playing hand · palm to camera"
+                    : exercise === "reach"
+                      ? "Front view · both shoulders visible"
+                      : (arm === "left" ? "Left" : "Right") +
+                        " arm · side-on view"}
                 </p>
                 <button className="text-button" onClick={onCameraOff}>
                   <CameraOff size={15} /> Turn camera off

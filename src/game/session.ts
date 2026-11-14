@@ -1,3 +1,4 @@
+import { normalizeReach, type Exercise } from "../movement/exercises";
 import { FRAME_MAX_AGE_MS } from "../movement/calibration";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -20,6 +21,11 @@ export type Phase =
   | "completed";
 export type Mode = "demo" | "camera";
 export type Settings = {
+  exercise: Exercise;
+  gripLower: number;
+  gripUpper: number;
+  reachLower: number;
+  reachUpper: number;
   arm: "left" | "right";
   lower: number;
   upper: number;
@@ -31,6 +37,7 @@ export type Settings = {
   saveSummaries: boolean;
 };
 export type Summary = {
+  exercise?: Exercise;
   id: number;
   cycles: number;
   seconds: number;
@@ -41,6 +48,11 @@ export type Summary = {
   target: number;
 };
 export const defaultSettings: Settings = {
+  exercise: "grip",
+  gripLower: 1.1,
+  gripUpper: 2.2,
+  reachLower: -1,
+  reachUpper: 0.1,
   arm: "right",
   lower: 150,
   upper: 65,
@@ -63,6 +75,7 @@ export function loadSettings(): Settings {
   }
 }
 export type WorldState = {
+  exercise?: Exercise;
   celebrating: boolean;
   position: number;
   velocity: number;
@@ -112,6 +125,7 @@ export function useSession(
   world.current.phase = phase;
   world.current.reduced = settings.reducedMotion;
   world.current.speed = settings.speed;
+  world.current.exercise = settings.exercise;
   const pausedFrom = useRef<"practice" | "playing">("playing");
   const transition = useCallback((next: Phase) => {
     if (!canTransition(current.current.phase, next)) return;
@@ -163,6 +177,7 @@ export function useSession(
       trace: [...trace.current],
       finished,
       target: c.settings.target,
+      exercise: c.settings.exercise,
     };
     setSummary(result);
     current.current.phase = "completed";
@@ -245,12 +260,35 @@ export function useSession(
         const g = gate.current.update(valid, now);
         valid = g.canCount;
         waitingNow = g.waiting || !valid;
-        if (valid && c.frame.angle !== null)
-          control.current = normalizeAngle(
-            c.frame.angle,
-            c.settings.lower,
-            c.settings.upper,
-          );
+        if (valid) {
+          if (
+            c.settings.exercise === "grip" &&
+            c.frame.openness !== null &&
+            c.frame.openness !== undefined
+          )
+            control.current = normalizeReach(
+              c.frame.openness,
+              c.settings.gripLower,
+              c.settings.gripUpper,
+            );
+          else if (
+            c.settings.exercise === "reach" &&
+            c.frame.height !== null &&
+            c.frame.height !== undefined
+          )
+            control.current = normalizeReach(
+              c.frame.height,
+              c.settings.reachLower,
+              c.settings.reachUpper,
+            );
+          else if (c.settings.exercise === "elbow" && c.frame.angle !== null)
+            control.current = normalizeAngle(
+              c.frame.angle,
+              c.settings.lower,
+              c.settings.upper,
+            );
+          else valid = false;
+        }
       }
       if (live && c.mode === "demo") {
         control.current = clamp(

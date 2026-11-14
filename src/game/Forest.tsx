@@ -1,3 +1,4 @@
+import { MagicFlower } from "./MagicFlower";
 import {
   useMemo,
   useRef,
@@ -251,7 +252,11 @@ function AncientTree({ world }: { world: React.RefObject<WorldState> }) {
   useFrame(({ clock }) => {
     const p = world.current.progress;
     root.current!.position.x = 13 - p * 9;
-    if (world.current.phase === "completed" && world.current.celebrating && endingAt.current === null)
+    if (
+      world.current.phase === "completed" &&
+      world.current.celebrating &&
+      endingAt.current === null
+    )
       endingAt.current = clock.elapsedTime;
     if (world.current.phase !== "completed") endingAt.current = null;
     const age =
@@ -671,6 +676,7 @@ function Scenery({
             ),
           )}
       </group>
+      <MagicFlower world={world} welcome={welcome} />
       <AncientTree world={world} />
       <CollectionSparkles world={world} />
       <Dragon world={world} welcome={welcome} />
