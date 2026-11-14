@@ -14,6 +14,8 @@ export type TrackingFrame = {
   tilt?: number | null;
   steering?: number | null;
   rawOpenness?: number | null;
+  rawValue?: number | null;
+  pointsValid?: boolean;
   at: number;
   points: Landmark[];
   message: string;

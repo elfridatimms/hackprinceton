@@ -38,10 +38,18 @@ Every game has a large animated demonstration before camera permission, a pose i
 
 - **Let’s play with Luma** opens the demonstration and camera setup. Camera permission is requested only after **Let’s try it together**.
 - **Try without a camera** / **Play with buttons instead** uses ↑ / ↓ (← / → for Pirate Ship) or a touch/pointer slider. Demo controls are explicitly labeled and never counted as camera-measured rehabilitation performance.
-- Capture two comfortable positions, then complete the practice movement. A configured range can also be entered in grown-up help while current tracking is valid.
+- A live MediaPipe scan shows the actual mirrored video, current landmarks, on-device inference time and a recent movement trace. Capture two comfortable positions, then follow two complete guided movements to fit a personal session profile. A configured range can also be entered in grown-up help while current tracking is valid.
 - Escape, pause, or **Take a break** opens the resting screen. Returning from another browser tab requires resuming; the tracking gate reacquires before counting.
 - Grown-up settings control the exercise, comfortable range, demonstration cycle target, speed, smoothing, sound, reduced motion, and optional browser-local summaries. The default eight cycles is a demo setting, not a treatment recommendation.
 - **Grown-up camera help** can copy a status report with runtime state and errors. It contains no images, video, coordinates, movement angles, or trace. Nothing is uploaded automatically.
+
+## Fresh personal scan for every camera adventure
+
+The camera route is Watch → Scan → Comfy spots → Your magic. Hand games display a 21-point hand overlay; arm games display the actual visible body connections. The scan trace uses timestamped camera observations and leaves gaps for missing data. The sweeping line is a visual guide, not a claim about detection or scan progress.
+
+Two stable endpoint holds provide raw stationary signal variation. Two complete low → high → low movements, with distinct fresh observations and dwell, validate the comfortable range. The session profile uses robust percentiles to trim at most 8% from either endpoint (never expand the captured range), MAD-based resting variation to fit a bounded filter deadband and time constant, and a matching response smoothing value. MediaPipe remains pretrained: this is personalized input calibration, not model retraining, biometric identification or a clinical assessment.
+
+The profile is applied to signal filtering and game input mapping. It remains in memory only and is excluded from stored preferences; camera start, restart and a new adventure request a fresh scan. Valid existing endpoints can be used explicitly through grown-up help without extra tuning. Camera loss, stale data, duplicates and gaps cannot complete a pending scan movement. Two completed scan movements satisfy the initial practice step.
 
 ## Tracking and movement calculation
 

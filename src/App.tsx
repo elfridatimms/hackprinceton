@@ -9,6 +9,7 @@ import {
   VolumeX,
   SlidersHorizontal,
   Sparkles,
+  ScanLine,
   Leaf,
   Heart,
   ArrowUpRight,
@@ -51,13 +52,19 @@ export default function App() {
     [endingReady, setEndingReady] = useState(false);
   const [switchTarget, setSwitchTarget] = useState<Exercise | null>(null);
   const [showLesson, setShowLesson] = useState(false);
-  const tracking = useTracking(settings.arm, undefined, settings.exercise),
+  const tracking = useTracking(
+      settings.arm,
+      undefined,
+      settings.exercise,
+      settings.personalization,
+    ),
     session = useSession(settings, tracking.frame, tracking.status === "on");
   const previousArm = useRef(settings.arm);
   const modalRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     try {
-      localStorage.setItem("luma-settings", JSON.stringify(settings));
+      const { personalization: _sessionOnly, ...preferences } = settings;
+      localStorage.setItem("luma-settings", JSON.stringify(preferences));
     } catch {}
     audio.mute(settings.muted);
     if (previousArm.current !== settings.arm) {
@@ -67,8 +74,10 @@ export default function App() {
   }, [settings]);
   useEffect(() => {
     if (session.phase === "practice") {
-      setPracticeUp(false);
-      setPracticeDone(false);
+      const alreadyPracticed =
+        session.mode === "camera" && !!settings.personalization;
+      setPracticeUp(alreadyPracticed);
+      setPracticeDone(alreadyPracticed);
     }
     if (session.phase === "completed") {
       setEndingReady(false);
@@ -133,6 +142,7 @@ export default function App() {
     };
   }, [anyModal, showSettings, showDetails, switchTarget, showLesson]);
   const startDemo = () => {
+    setSettings((s) => ({ ...s, personalization: null }));
     tracking.stop();
     setCameraOff(false);
     setShowSettings(false);
@@ -141,6 +151,8 @@ export default function App() {
     session.reset("practice");
   };
   const startCamera = () => {
+    tracking.stop();
+    setSettings((s) => ({ ...s, personalization: null }));
     audio.start();
     session.setMode("camera");
     session.reset("setup");
@@ -154,7 +166,11 @@ export default function App() {
     if (session.seconds > 0 || session.cycles > 0) session.finish(false);
     tracking.stop();
     session.reset("welcome");
-    setSettings((current) => ({ ...current, exercise: next }));
+    setSettings((current) => ({
+      ...current,
+      exercise: next,
+      personalization: null,
+    }));
     setSwitchTarget(null);
     setShowLesson(false);
   };
@@ -286,14 +302,25 @@ export default function App() {
                 </p>
                 <div className="hero-buttons">
                   <button className="button primary" onClick={startCamera}>
-                    Let’s play with Luma <ArrowRight size={19} />
+                    Meet your magic <ArrowRight size={19} />
                   </button>
                   <button className="hero-demo" onClick={startDemo}>
                     Try without a camera <ArrowUpRight size={16} />
                   </button>
                 </div>
+                <div className="hero-scan-promise">
+                  <ScanLine size={17} />
+                  <div>
+                    <strong>First, meet your magic.</strong>
+                    <span>
+                      Live MediaPipe scan · Your comfortable movement · Made for
+                      you
+                    </span>
+                  </div>
+                </div>
                 <div className="hero-micro">
-                  <Heart size={14} /> Your pace is the perfect pace.
+                  <Heart size={14} /> A fresh little movement scan, just for
+                  you.
                 </div>
               </div>
               <div className="meet-luma">
@@ -703,9 +730,11 @@ export default function App() {
                     ? ["grip", "wrist", "ship"].includes(settings.exercise)
                       ? "Finding your hand"
                       : "Finding your arm"
-                    : ["grip", "wrist", "ship"].includes(settings.exercise)
-                      ? "Hand in view"
-                      : "Arm in view"}
+                    : settings.personalization
+                      ? "Personal scan ready"
+                      : ["grip", "wrist", "ship"].includes(settings.exercise)
+                        ? "Hand in view"
+                        : "Arm in view"}
               </div>
               <button
                 className="break-button"
@@ -788,7 +817,9 @@ export default function App() {
                 className="button secondary full"
                 onClick={() => {
                   audio.start();
-                  session.reset("practice");
+                  session.mode === "camera"
+                    ? startCamera()
+                    : session.reset("practice");
                 }}
               >
                 <RotateCcw size={16} /> Restart adventure
@@ -901,7 +932,9 @@ export default function App() {
               className="button primary full"
               onClick={() => {
                 audio.start();
-                session.reset("practice");
+                session.mode === "camera"
+                  ? startCamera()
+                  : session.reset("practice");
               }}
             >
               {settings.exercise === "ship"
@@ -963,7 +996,7 @@ export default function App() {
       {showSettings && (
         <Settings
           settings={settings}
-          onSave={setSettings}
+          onSave={(next) => setSettings({ ...next, personalization: null })}
           onClose={() => setShowSettings(false)}
           onRecalibrate={() => {
             setShowSettings(false);

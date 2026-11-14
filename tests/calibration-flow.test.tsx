@@ -181,6 +181,14 @@ describe("The calibration screen that previously trapped the user", () => {
     frames(65);
     expect(button("Remember this position").disabled).toBe(false);
     click("Remember this position");
+    expect(reset).not.toHaveBeenCalled();
+    expect(host.textContent).toContain("Two little moves.");
+    frames(150);
+    frames(65);
+    frames(150);
+    frames(65);
+    frames(150);
+    click("Let’s try my magic");
     expect(save).toHaveBeenLastCalledWith(
       expect.objectContaining({ lower: 150, upper: 65 }),
     );
@@ -207,6 +215,7 @@ describe("The calibration screen that previously trapped the user", () => {
     frames(100, true, 1);
     expect(button("Use this range and practice").disabled).toBe(false);
     click("Use this range and practice");
+    click("Use my two saved spots without extra tuning");
     expect(save).toHaveBeenCalledWith(
       expect.objectContaining({ lower: 150, upper: 65 }),
     );
@@ -234,6 +243,13 @@ describe("The calibration screen that previously trapped the user", () => {
     frames(2.1);
     expect(host.textContent).toContain("Let your flower say hello!");
     click("Remember this position");
+    expect(reset).not.toHaveBeenCalled();
+    frames(1.05);
+    frames(2.1);
+    frames(1.05);
+    frames(2.1);
+    frames(1.05);
+    click("Let’s try my magic");
     expect(save).toHaveBeenLastCalledWith(
       expect.objectContaining({
         exercise: "grip",
@@ -252,6 +268,13 @@ describe("The calibration screen that previously trapped the user", () => {
     frames(47);
     expect(host.textContent).toContain("Give your butterfly a breeze!");
     click("Remember this position");
+    expect(reset).not.toHaveBeenCalled();
+    frames(12);
+    frames(47);
+    frames(12);
+    frames(47);
+    frames(12);
+    click("Let’s try my magic");
     expect(save).toHaveBeenLastCalledWith(
       expect.objectContaining({
         exercise: "wrist",
@@ -272,8 +295,21 @@ describe("The calibration screen that previously trapped the user", () => {
     frames(22);
     expect(host.textContent).toContain("A little lean to the right.");
     click("Remember this position");
-    expect(save).toHaveBeenLastCalledWith(expect.objectContaining({exercise:"ship",shipLower:-18,shipUpper:22,tiltLower:defaultSettings.tiltLower}));
+    expect(reset).not.toHaveBeenCalled();
+    frames(-18);
+    frames(22);
+    frames(-18);
+    frames(22);
+    frames(-18);
+    click("Let’s try my magic");
+    expect(save).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        exercise: "ship",
+        shipLower: -18,
+        shipUpper: 22,
+        tiltLower: defaultSettings.tiltLower,
+      }),
+    );
     expect(reset).toHaveBeenCalledWith("practice");
   });
-
 });

@@ -8,6 +8,12 @@ export class MovementFilter {
     private deadband = 0.012,
     private maxGap = 450,
   ) {}
+  configure(tau: number, deadband: number) {
+    if (tau === this.tau && deadband === this.deadband) return;
+    this.tau = tau;
+    this.deadband = deadband;
+    this.reset();
+  }
   reset() {
     this.samples = [];
     this.value = null;

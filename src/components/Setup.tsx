@@ -1,3 +1,6 @@
+import { PersonalTune } from "./PersonalTune";
+import { TrackingScan } from "./TrackingScan";
+import type { PersonalProfile } from "../movement/personalization";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
@@ -63,7 +66,11 @@ export function Setup({
     [manual, setManual] = useState(false),
     [manualLower, setManualLower] = useState(getMovementRange(settings).lower),
     [manualUpper, setManualUpper] = useState(getMovementRange(settings).upper);
-  const samples = useRef<{ angle: number; at: number }[]>([]);
+  const samples = useRef<{ angle: number; raw: number; at: number }[]>([]);
+  const holds = useRef<number[][]>([]);
+  const [tuning, setTuning] = useState<{ lower: number; upper: number } | null>(
+    null,
+  );
   const reach = settings.exercise === "reach";
   const grip = settings.exercise === "grip";
   const wrist = settings.exercise === "wrist";
@@ -71,14 +78,18 @@ export function Setup({
   const handMode = grip || wrist || ship;
   const exercise = exercises[settings.exercise];
   const value = movementValue(tracking.frame, settings.exercise);
-  const stage = session.phase === "calibration" ? 2 : step;
+  const stage = tuning ? 3 : session.phase === "calibration" ? 2 : step;
   useEffect(() => {
     const timer = setInterval(() => setNow(performance.now()), 100);
     return () => clearInterval(timer);
   }, []);
   useEffect(() => {
     if (tracking.frame.valid && value !== null)
-      samples.current.push({ angle: value, at: tracking.frame.at });
+      samples.current.push({
+        angle: value,
+        raw: tracking.frame.rawValue ?? value,
+        at: tracking.frame.at,
+      });
     samples.current = samples.current.filter(
       (s) => performance.now() - s.at <= CALIBRATION_WINDOW_MS,
     );
@@ -101,6 +112,8 @@ export function Setup({
   };
   const chooseArm = (arm: Settings["arm"]) => {
     setSettings({ ...settings, arm });
+    holds.current = [];
+    setTuning(null);
     setLower(null);
     setEndpoint("lower");
     setCaptureError("");
@@ -112,13 +125,24 @@ export function Setup({
     const range = getMovementRange(nextSettings);
     setManualLower(range.lower);
     setManualUpper(range.upper);
+    holds.current = [];
+    setTuning(null);
     setLower(null);
     setEndpoint("lower");
     setCaptureError("");
     resetHold();
   };
   const finishRange = (low: number, high: number) => {
-    setSettings(applyMovementRange(settings, low, high));
+    setTuning({ lower: low, upper: high });
+  };
+  const completeScan = (profile: PersonalProfile | null) => {
+    if (!tuning) return;
+    const range = profile ?? tuning;
+    setSettings({
+      ...applyMovementRange(settings, range.lower, range.upper),
+      personalization: profile,
+      smoothing: profile?.smoothing ?? settings.smoothing,
+    });
     session.reset("practice");
   };
   const capture = () => {
@@ -128,7 +152,11 @@ export function Setup({
       performance.now() - tracking.frame.at > FRAME_MAX_AGE_MS
     )
       return;
+    const rawHold = samples.current
+      .filter((s) => performance.now() - s.at <= CALIBRATION_WINDOW_MS)
+      .map((s) => s.raw);
     if (endpoint === "lower") {
+      holds.current = [rawHold];
       setLower(stable);
       setEndpoint("upper");
       resetHold();
@@ -136,8 +164,10 @@ export function Setup({
     } else {
       const range =
         lower === null ? null : movementRange(settings.exercise, lower, stable);
-      if (range) finishRange(range.lower, range.upper);
-      else
+      if (range) {
+        holds.current = [holds.current[0] ?? [], rawHold];
+        finishRange(range.lower, range.upper);
+      } else
         setCaptureError(
           "Those two spots are very close. Try your cozy spot again, or ask a grown-up to help. Stay comfortable.",
         );
@@ -170,7 +200,7 @@ export function Setup({
   return (
     <div className="modal-backdrop setup-backdrop">
       <section
-        className="modal setup-modal child-setup"
+        className={`modal setup-modal child-setup ${stage > 0 ? "scan-setup-modal" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="setup-title"
@@ -188,19 +218,34 @@ export function Setup({
           </button>
         </div>
         <div className="setup-steps child-steps">
-          {["Pick your magic", "Say hello", "Find your spots"].map(
-            (label, i) => (
-              <div
-                key={label}
-                className={i === stage ? "current" : i < stage ? "done" : ""}
-              >
-                <span>{i < stage ? <Check size={12} /> : i + 1}</span>
-                {label}
-              </div>
-            ),
-          )}
+          {["Watch", "Scan", "Comfy spots", "Your magic"].map((label, i) => (
+            <div
+              key={label}
+              className={i === stage ? "current" : i < stage ? "done" : ""}
+            >
+              <span>{i < stage ? <Check size={12} /> : i + 1}</span>
+              {label}
+            </div>
+          ))}
         </div>
-        {stage === 0 ? (
+        {stage === 3 && tuning ? (
+          <PersonalTune
+            tracking={tracking}
+            exercise={settings.exercise}
+            arm={settings.arm}
+            range={tuning}
+            holds={holds.current}
+            onComplete={completeScan}
+            onRetry={() => {
+              setTuning(null);
+              holds.current = [];
+              setLower(null);
+              setEndpoint("lower");
+              resetHold();
+            }}
+            onDemo={onDemo}
+          />
+        ) : stage === 0 ? (
           <>
             <h2 id="setup-title">
               {grip ? "Let’s wake a sleepy flower!" : exercise.title + "!"}
@@ -305,7 +350,10 @@ export function Setup({
           </>
         ) : stage === 1 ? (
           <>
-            <h2 id="setup-title">Hello, little light keeper!</h2>
+            <span className="scan-eyebrow">
+              <Sparkles size={13} /> LET’S MEET YOUR MAGIC
+            </span>
+            <h2 id="setup-title">Luma can see your little moves.</h2>
             <p>
               {ship
                 ? "Show one palm with fingers pointing up. Tilt it gently like a wave."
@@ -317,28 +365,11 @@ export function Setup({
                       ? "Sit facing the camera. Give us a little wave."
                       : "Sit a little sideways. Let the camera see your arm."}
             </p>
-            <div className="setup-camera">
-              {tracking.video.current?.srcObject ? (
-                <CameraFeed
-                  tracking={tracking}
-                  arm={settings.arm}
-                  exercise={settings.exercise}
-                />
-              ) : (
-                <div className="camera-loading">
-                  {tracking.status === "loading" ? (
-                    <LoaderCircle className="spin" size={31} />
-                  ) : (
-                    <Camera size={35} />
-                  )}
-                  <p>
-                    {tracking.status === "loading"
-                      ? "Waking up the forest camera…"
-                      : "Let’s find a way to play."}
-                  </p>
-                </div>
-              )}
-            </div>
+            <TrackingScan
+              tracking={tracking}
+              exercise={settings.exercise}
+              arm={settings.arm}
+            />
             <div className={"hello-status " + (fresh ? "found" : "")}>
               <span>{fresh ? "✦" : "◌"}</span>
               <div>
@@ -371,7 +402,7 @@ export function Setup({
                 session.transition("calibration");
               }}
             >
-              That’s me! <ArrowRight size={17} />
+              Find my comfy spots <ArrowRight size={17} />
             </button>
             <button className="text-button centered" onClick={onDemo}>
               Play with buttons instead
@@ -425,10 +456,11 @@ export function Setup({
             </p>
             <div className="child-calibration-visual">
               <div className="calibration-camera">
-                <CameraFeed
+                <TrackingScan
                   tracking={tracking}
-                  arm={settings.arm}
                   exercise={settings.exercise}
+                  arm={settings.arm}
+                  compact
                 />
               </div>
               <div className="calibration-demonstration">
@@ -538,6 +570,8 @@ export function Setup({
                 className="text-button centered"
                 onClick={() => {
                   setEndpoint("lower");
+                  holds.current = [];
+                  setTuning(null);
                   setLower(null);
                   setCaptureError("");
                   resetHold();
@@ -630,7 +664,10 @@ export function Setup({
               <button
                 className="button secondary full"
                 disabled={!fresh || !manualValid}
-                onClick={() => finishRange(manualLower, manualUpper)}
+                onClick={() => {
+                  holds.current = [];
+                  finishRange(manualLower, manualUpper);
+                }}
               >
                 Use this range and practice <ArrowRight size={15} />
               </button>
@@ -644,6 +681,8 @@ export function Setup({
           <CameraDiagnostics
             tracking={tracking}
             onRestart={() => {
+              holds.current = [];
+              setTuning(null);
               setLower(null);
               setEndpoint("lower");
               setCaptureError("");

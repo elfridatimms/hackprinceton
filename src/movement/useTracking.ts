@@ -1,3 +1,4 @@
+import type { PersonalProfile } from "./personalization";
 import { MovementFilter } from "./filter";
 import {
   handHeight,
@@ -46,6 +47,7 @@ export function useTracking(
   arm: Arm,
   requestStream: () => Promise<MediaStream> = requestCameraStream,
   exercise: Exercise = "elbow",
+  profile: PersonalProfile | null = null,
 ) {
   const [status, setStatus] = useState<"off" | "loading" | "on" | "error">(
     "off",
@@ -53,7 +55,7 @@ export function useTracking(
   const [error, setError] = useState("");
   const [frame, setFrame] = useState<TrackingFrame>(EMPTY);
   const diagnostics = useRef<TrackingDiagnostics>({
-    build: "pirate-bay-6",
+    build: "personal-scan-7",
     stage: "Camera off",
     engine: "CPU",
     video: "—",
@@ -71,6 +73,30 @@ export function useTracking(
   const gripFilter = useRef(new MovementFilter(0.16, 0.012));
   const tiltFilter = useRef(new MovementFilter(0.12, 0.4));
   const steeringFilter = useRef(new MovementFilter(0.12, 0.4));
+  const poseFilter = useRef(new MovementFilter());
+  const profileRef = useRef(profile);
+  profileRef.current =
+    profile?.exercise === exercise && profile.arm === arm ? profile : null;
+  useEffect(() => {
+    const p = profileRef.current;
+    gripFilter.current.configure(
+      p?.signalTau ?? 0.16,
+      p?.signalDeadband ?? 0.012,
+    );
+    tiltFilter.current.configure(
+      p?.signalTau ?? 0.12,
+      p?.signalDeadband ?? 0.4,
+    );
+    steeringFilter.current.configure(
+      p?.signalTau ?? 0.12,
+      p?.signalDeadband ?? 0.4,
+    );
+    poseFilter.current.configure(
+      p?.signalTau ?? 0.16,
+      p?.signalDeadband ?? 0.012,
+    );
+    setFrame(EMPTY);
+  }, [profile, exercise, arm]);
   const modelExercise = useRef<Exercise | null>(null);
   armRef.current = arm;
   const exerciseRef = useRef(exercise);
@@ -96,6 +122,7 @@ export function useTracking(
     gripFilter.current.reset();
     tiltFilter.current.reset();
     steeringFilter.current.reset();
+    poseFilter.current.reset();
     modelExercise.current = null;
     setFrame(EMPTY);
     setStatus("off");
@@ -106,7 +133,7 @@ export function useTracking(
     setStatus("loading");
     setError("");
     diagnostics.current = {
-      build: "pirate-bay-6",
+      build: "personal-scan-7",
       stage: "Waiting for camera permission",
       engine: "CPU",
       video: "—",
@@ -253,14 +280,14 @@ export function useTracking(
               timely ? rawTilt : null,
               now,
             );
-            const angle = handMode
+            const rawAngle = handMode
               ? null
               : elbowAngle(
                   points,
                   armRef.current,
                   el.videoWidth / el.videoHeight,
                 );
-            const height = handMode
+            const rawHeight = handMode
               ? null
               : handHeight(
                   points,
@@ -268,6 +295,25 @@ export function useTracking(
                   el.videoWidth / el.videoHeight,
                 );
             const isReach = exerciseRef.current === "reach";
+            const rawValue = isShip
+              ? rawSteering
+              : isWrist
+                ? rawTilt
+                : isGrip
+                  ? rawOpenness
+                  : isReach
+                    ? rawHeight
+                    : rawAngle;
+            const filteredPose =
+              profileRef.current && !handMode
+                ? poseFilter.current.update(timely ? rawValue : null, now)
+                : null;
+            const angle =
+              !handMode && !isReach && profileRef.current
+                ? filteredPose
+                : rawAngle;
+            const height =
+              isReach && profileRef.current ? filteredPose : rawHeight;
             const detected = isShip
               ? steering !== null
               : isWrist
@@ -293,6 +339,12 @@ export function useTracking(
                 : missing;
             setFrame({
               valid: detected && timely,
+              pointsValid:
+                timely &&
+                (handMode
+                  ? sameHand && confidence >= 0.5 && points.length === 21
+                  : points.length === 33),
+              rawValue: timely ? rawValue : null,
               height: timely ? height : null,
               openness: timely ? openness : null,
               rawOpenness: timely ? rawOpenness : null,
@@ -314,6 +366,7 @@ export function useTracking(
               gripFilter.current.reset();
               tiltFilter.current.reset();
               steeringFilter.current.reset();
+              poseFilter.current.reset();
             }
             setFrame((previous) =>
               now - previous.at > FRAME_MAX_AGE_MS
@@ -330,6 +383,7 @@ export function useTracking(
           gripFilter.current.reset();
           tiltFilter.current.reset();
           steeringFilter.current.reset();
+          poseFilter.current.reset();
           diagnostics.current.stage = "Tracking error";
           diagnostics.current.lastError =
             cause instanceof Error ? cause.message : String(cause);

@@ -23,11 +23,13 @@ export function CameraFeed({
   arm,
   sourceLabel,
   exercise = "elbow",
+  scan = false,
 }: {
   tracking: Tracking;
   arm: "left" | "right";
   sourceLabel?: string;
   exercise?: Exercise;
+  scan?: boolean;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const frameRef = useRef(tracking.frame);
@@ -53,7 +55,7 @@ export function CameraFeed({
               exercise === "wrist" ||
               exercise === "ship"
             ) {
-              if (frame.valid) {
+              if (frame.valid || (scan && frame.pointsValid)) {
                 const links = [
                   [0, 1],
                   [1, 2],
@@ -79,8 +81,8 @@ export function CameraFeed({
                 ];
                 const inside = (p: (typeof frame.points)[number] | undefined) =>
                   !!p && p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1;
-                ctx.strokeStyle = "#fce6a1";
-                ctx.lineWidth = 3;
+                ctx.strokeStyle = scan ? "#8df4da" : "#fce6a1";
+                ctx.lineWidth = scan ? Math.max(3, c.width / 230) : 3;
                 ctx.lineCap = "round";
                 for (const [a, b] of links) {
                   const p = frame.points[a],
@@ -96,38 +98,87 @@ export function CameraFeed({
                   if (inside(p)) {
                     ctx.beginPath();
                     ctx.arc(p.x * c.width, p.y * c.height, 3, 0, Math.PI * 2);
-                    ctx.fillStyle = "#fff2bd";
+                    ctx.fillStyle = scan ? "#f0fff4" : "#fff2bd";
                     ctx.fill();
                   }
                 }
               }
             } else {
-              const ids =
-                exercise === "reach"
-                  ? arm === "left"
-                    ? [12, 11, 15]
-                    : [11, 12, 16]
-                  : arm === "left"
-                    ? [11, 13, 15]
-                    : [12, 14, 16];
-              const pts = ids.map((i) => frame.points[i]);
-              ctx.strokeStyle = "#ffdf8b";
-              ctx.lineWidth = 5;
+              const left = arm === "left";
+              const pairs = scan
+                ? [
+                    [11, 12],
+                    [11, 13],
+                    [13, 15],
+                    [15, 17],
+                    [15, 19],
+                    [17, 19],
+                    [15, 21],
+                    [12, 14],
+                    [14, 16],
+                    [16, 18],
+                    [16, 20],
+                    [18, 20],
+                    [16, 22],
+                    [11, 23],
+                    [12, 24],
+                    [23, 24],
+                    [23, 25],
+                    [25, 27],
+                    [27, 29],
+                    [29, 31],
+                    [27, 31],
+                    [24, 26],
+                    [26, 28],
+                    [28, 30],
+                    [30, 32],
+                    [28, 32],
+                  ]
+                : exercise === "reach"
+                  ? left
+                    ? [
+                        [12, 11],
+                        [11, 15],
+                      ]
+                    : [
+                        [11, 12],
+                        [12, 16],
+                      ]
+                  : left
+                    ? [
+                        [11, 13],
+                        [13, 15],
+                      ]
+                    : [
+                        [12, 14],
+                        [14, 16],
+                      ];
+              ctx.strokeStyle = scan ? "#8df4da" : "#ffdf8b";
+              ctx.lineWidth = scan ? Math.max(3, c.width / 230) : 5;
               ctx.lineCap = "round";
-              for (let i = 0; i < 2; i++) {
-                const a = pts[i],
-                  b = pts[i + 1];
-                if (usableLandmark(a) && usableLandmark(b)) {
+              for (const [a, b] of pairs) {
+                const p = frame.points[a],
+                  q = frame.points[b];
+                if (usableLandmark(p) && usableLandmark(q)) {
                   ctx.beginPath();
-                  ctx.moveTo(a.x * c.width, a.y * c.height);
-                  ctx.lineTo(b.x * c.width, b.y * c.height);
+                  ctx.moveTo(p.x * c.width, p.y * c.height);
+                  ctx.lineTo(q.x * c.width, q.y * c.height);
                   ctx.stroke();
                 }
               }
-              pts.filter(usableLandmark).forEach((p) => {
+              const ids = [...new Set(pairs.flat())];
+              ids.forEach((id) => {
+                const p = frame.points[id];
+                if (!usableLandmark(p)) return;
                 ctx.beginPath();
-                ctx.arc(p.x * c.width, p.y * c.height, 6, 0, Math.PI * 2);
-                ctx.fillStyle = "#fff4c4";
+                ctx.arc(
+                  p.x * c.width,
+                  p.y * c.height,
+                  scan ? Math.max(4, c.width / 150) : 6,
+                  0,
+                  Math.PI * 2,
+                );
+                ctx.fillStyle = scan ? "#effff4" : "#fff4c4";
                 ctx.fill();
               });
             }
@@ -138,10 +189,10 @@ export function CameraFeed({
     };
     draw();
     return () => cancelAnimationFrame(id);
-  }, [tracking.video, arm, exercise]);
+  }, [tracking.video, arm, exercise, scan]);
   return (
     <div
-      className="camera-feed"
+      className={"camera-feed " + (scan ? "scan-camera-feed" : "")}
       style={{
         aspectRatio: `${tracking.video.current?.videoWidth || 640}/${tracking.video.current?.videoHeight || 480}`,
       }}
@@ -150,7 +201,11 @@ export function CameraFeed({
         ref={canvas}
         width={640}
         height={480}
-        aria-label="Live mirrored camera preview with selected arm landmarks"
+        aria-label={
+          scan
+            ? "Live MediaPipe landmark scan from the camera"
+            : "Live mirrored camera preview with selected arm landmarks"
+        }
         style={{ transform: "scaleX(-1)" }}
       />
       <span className="live-label">

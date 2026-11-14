@@ -1,3 +1,4 @@
+import type { PersonalProfile } from "../movement/personalization";
 import { normalizeReach, type Exercise } from "../movement/exercises";
 import { FRAME_MAX_AGE_MS } from "../movement/calibration";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -22,6 +23,7 @@ export type Phase =
 export type Mode = "demo" | "camera";
 export type Settings = {
   exercise: Exercise;
+  personalization: PersonalProfile | null;
   gripLower: number;
   gripUpper: number;
   tiltLower: number;
@@ -53,6 +55,7 @@ export type Summary = {
 };
 export const defaultSettings: Settings = {
   exercise: "grip",
+  personalization: null,
   gripLower: 1.1,
   gripUpper: 2.2,
   tiltLower: 10,
@@ -77,6 +80,7 @@ export function loadSettings(): Settings {
       ...defaultSettings,
       reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches,
       ...JSON.parse(localStorage.getItem("luma-settings") ?? "{}"),
+      personalization: null,
     };
   } catch {
     return defaultSettings;
