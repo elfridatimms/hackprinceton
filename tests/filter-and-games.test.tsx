@@ -85,7 +85,7 @@ describe("Butterfly hand tilt and independent game calibration", () => {
       ),
     ).toBeNull();
   });
-  it("retains separate calibrated ranges for all four actual game inputs", () => {
+  it("retains separate calibrated ranges for all five actual game inputs", () => {
     const wrist = applyMovementRange(
       { ...defaultSettings, exercise: "wrist" as const },
       12,
@@ -99,7 +99,7 @@ describe("Butterfly hand tilt and independent game calibration", () => {
   });
 });
 describe("Child-friendly game navigation and lessons", () => {
-  it("exposes four selectable tabs with keyboard navigation and an active panel reference", () => {
+  it("exposes five selectable tabs with keyboard navigation and an active panel reference", () => {
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
     const host = document.createElement("div");
     document.body.append(host);
@@ -121,7 +121,7 @@ describe("Child-friendly game navigation and lessons", () => {
     const tabs = Array.from(
       host.querySelectorAll<HTMLButtonElement>('[role="tab"]'),
     );
-    expect(tabs).toHaveLength(4);
+    expect(tabs).toHaveLength(5);
     expect(tabs[0].getAttribute("aria-selected")).toBe("true");
     act(() =>
       tabs[0].dispatchEvent(
@@ -136,7 +136,7 @@ describe("Child-friendly game navigation and lessons", () => {
         new KeyboardEvent("keydown", { key: "End", bubbles: true }),
       ),
     );
-    expect(selected).toBe("wrist");
+    expect(selected).toBe("ship");
     act(() => root.unmount());
     host.remove();
     vi.unstubAllGlobals();

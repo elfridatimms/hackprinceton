@@ -1,6 +1,6 @@
 # Luma & the Firefly Forest
 
-A child-friendly, camera-controlled forest with four playable game tabs, original procedural Three.js art, animated movement lessons, and a complete welcome → setup → calibration → practice → play → rest → finish flow.
+A child-friendly, camera-controlled forest with five playable game tabs, original procedural Three.js art, animated movement lessons, and a complete welcome → setup → calibration → practice → play → rest → finish flow.
 
 ## Run
 
@@ -20,7 +20,7 @@ npm run build
 
 Serve `dist/` with a static HTTPS host. Camera permission requires HTTPS or localhost. MediaPipe models and WASM are bundled locally under `public/`; camera frames never leave the device. Google Fonts is optional and falls back to system fonts.
 
-## Four little games
+## Five little games
 
 | Tab | Movement input | Visual response |
 | --- | --- | --- |
@@ -28,6 +28,7 @@ Serve `dist/` with a static HTTPS host. Camera permission requires HTTPS or loca
 | Firefly Trail | Raise and return a hand, facing the camera | Luma follows the hand and collects lights; an illustrated glass jar fills with actual collections |
 | Dragon Flight | Seated elbow bending and returning, viewed approximately side-on | Luma flies through golden cloud hoops along the forest journey |
 | Butterfly Breeze | Gently tilt a supported hand up and return | A lavender butterfly lifts and flutters with the hand's projected direction |
+| Pirate Ship | Gently lean an upright palm left and right | A toy ship sails between two islands, collecting lights only after real arrival and a short dwell |
 
 The tabs have visible selected states and support arrow keys, Home, and End. Switching games during active play pauses first and asks before finishing that adventure. Each exercise keeps an independent movement range. Session summaries record the actual game and input mode.
 
@@ -36,7 +37,7 @@ Every game has a large animated demonstration before camera permission, a pose i
 ## Play
 
 - **Let’s play with Luma** opens the demonstration and camera setup. Camera permission is requested only after **Let’s try it together**.
-- **Try without a camera** / **Play with buttons instead** uses ↑ / ↓ or a touch/pointer slider. Demo controls are explicitly labeled and never counted as camera-measured rehabilitation performance.
+- **Try without a camera** / **Play with buttons instead** uses ↑ / ↓ (← / → for Pirate Ship) or a touch/pointer slider. Demo controls are explicitly labeled and never counted as camera-measured rehabilitation performance.
 - Capture two comfortable positions, then complete the practice movement. A configured range can also be entered in grown-up help while current tracking is valid.
 - Escape, pause, or **Take a break** opens the resting screen. Returning from another browser tab requires resuming; the tracking gate reacquires before counting.
 - Grown-up settings control the exercise, comfortable range, demonstration cycle target, speed, smoothing, sound, reduced motion, and optional browser-local summaries. The default eight cycles is a demo setting, not a treatment recommendation.
@@ -50,6 +51,8 @@ Hand games use **MediaPipe Hand Landmarker** on CPU with one hand. Reach and elb
 - **Reach:** wrist height relative to the selected shoulder, divided by the image-space shoulder width. Both shoulders and the selected wrist must be visible. A front-facing camera is supported; a visible elbow is not required for this game.
 - **Elbow:** the interior angle between shoulder→elbow and wrist→elbow vectors, with aspect-corrected image coordinates. 180° represents extension, and smaller angles represent more bending. The selected arm is fixed and all three points need visibility/presence of at least 0.35.
 - **Hand tilt:** `atan2(wrist.y - middleKnuckle.y, abs(middleKnuckle.x - wrist.x) * aspect)`, in degrees. This is the hand's projected direction in the image, **not an isolated anatomical wrist joint angle**. A visible wrist and middle knuckle and a nondegenerate palm are required.
+
+- **Ship steering:** signed wrist-to-middle-knuckle palm lean, corrected for aspect ratio and mirrored to match the camera preview. An upright palm maps to zero; left is negative, right is positive. Downturned, sideways, tiny and out-of-frame palms are rejected. The same 3-sample median, 0.12 s EMA and 0.4° deadband apply. Calibration is independent of all other games.
 
 Configured endpoints map to the whole usable game range and values are clamped. Moving farther than configured provides no additional reward. Exercise selection and physical limits for rehabilitation should be agreed with the treating professional; the application does not prescribe progression.
 
@@ -74,7 +77,7 @@ Collections are based on actual proximity in the game. Missing a target carries 
 
 ## Verification and limitations
 
-`npm test` covers projected movement math and aspect correction, calibration, cycle dwell/hysteresis, tracking-loss handling, camera/model lifecycle, the correct hand versus pose model, normalized opening, thumb independence, the median/EMA filter, jitter suppression, real step response, stale-gap resets, frame-rate response, independent game ranges, tab keyboard navigation, and the selected animation/instructions for all four games.
+`npm test` covers projected movement math and aspect correction, calibration, cycle dwell/hysteresis, tracking-loss handling, camera/model lifecycle, the correct hand versus pose model, normalized opening, thumb independence, the median/EMA filter, jitter suppression, real step response, stale-gap resets, frame-rate response, independent game ranges, tab keyboard navigation, and the selected animation/instructions for all five games.
 
 Development-only `tests/runtime-check.html` runs the actual bundled pose model. `tests/runtime-hook-check.html` runs the real camera hook and calibration with a clearly labeled canvas video stream from official MediaPipe test images. These development pages and test images are not included in the production static build. The real hand model distinguished the open and folded-finger fixtures and completed both calibration endpoints into practice. This is not a live-child-camera validation.
 

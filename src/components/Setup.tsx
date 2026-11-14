@@ -67,7 +67,8 @@ export function Setup({
   const reach = settings.exercise === "reach";
   const grip = settings.exercise === "grip";
   const wrist = settings.exercise === "wrist";
-  const handMode = grip || wrist;
+  const ship = settings.exercise === "ship";
+  const handMode = grip || wrist || ship;
   const exercise = exercises[settings.exercise];
   const value = movementValue(tracking.frame, settings.exercise);
   const stage = session.phase === "calibration" ? 2 : step;
@@ -222,18 +223,24 @@ export function Setup({
               <div className="movement-steps">
                 <span>
                   <b>1</b>
-                  {wrist
-                    ? "Tilt your hand"
-                    : grip
-                      ? "Open your hand"
-                      : reach
-                        ? "Reach for the light"
-                        : "Give Luma a lift"}
+                  {ship
+                    ? "Sail to the right"
+                    : wrist
+                      ? "Tilt your hand"
+                      : grip
+                        ? "Open your hand"
+                        : reach
+                          ? "Reach for the light"
+                          : "Give Luma a lift"}
                 </span>
                 <i>↝</i>
                 <span>
                   <b>2</b>
-                  {grip ? "Close it softly" : "Come softly back"}
+                  {ship
+                    ? "Sail softly left"
+                    : grip
+                      ? "Close it softly"
+                      : "Come softly back"}
                 </span>
               </div>
             </div>
@@ -300,13 +307,15 @@ export function Setup({
           <>
             <h2 id="setup-title">Hello, little light keeper!</h2>
             <p>
-              {wrist
-                ? "Show your hand from a little side view, with fingers pointing across the picture."
-                : grip
-                  ? "Show one hand, with your palm facing the camera."
-                  : reach
-                    ? "Sit facing the camera. Give us a little wave."
-                    : "Sit a little sideways. Let the camera see your arm."}
+              {ship
+                ? "Show one palm with fingers pointing up. Tilt it gently like a wave."
+                : wrist
+                  ? "Show your hand from a little side view, with fingers pointing across the picture."
+                  : grip
+                    ? "Show one hand, with your palm facing the camera."
+                    : reach
+                      ? "Sit facing the camera. Give us a little wave."
+                      : "Sit a little sideways. Let the camera see your arm."}
             </p>
             <div className="setup-camera">
               {tracking.video.current?.srcObject ? (
@@ -375,36 +384,44 @@ export function Setup({
               <div>
                 <small>YOUR TWO LITTLE MAGIC SPOTS</small>
                 <h2 id="setup-title">
-                  {wrist
+                  {ship
                     ? endpoint === "lower"
-                      ? "A soft, resting hand."
-                      : "Give your butterfly a breeze!"
-                    : grip
+                      ? "A little lean to the left."
+                      : "A little lean to the right."
+                    : wrist
                       ? endpoint === "lower"
-                        ? "A soft, sleepy hand."
-                        : "Let your flower say hello!"
-                      : endpoint === "lower"
-                        ? "Find your cozy spot."
-                        : reach
-                          ? "Reach for a little light."
-                          : "Give Luma a little lift!"}
+                        ? "A soft, resting hand."
+                        : "Give your butterfly a breeze!"
+                      : grip
+                        ? endpoint === "lower"
+                          ? "A soft, sleepy hand."
+                          : "Let your flower say hello!"
+                        : endpoint === "lower"
+                          ? "Find your cozy spot."
+                          : reach
+                            ? "Reach for a little light."
+                            : "Give Luma a little lift!"}
                 </h2>
               </div>
             </div>
             <p>
-              {wrist
+              {ship
                 ? endpoint === "lower"
-                  ? "Rest your forearm comfortably. Find a gentle starting spot for your hand."
-                  : "Gently tilt your hand up a little. Stop wherever feels comfy."
-                : grip
+                  ? "Lean your open hand a little left, like the picture. Hold your comfy spot."
+                  : "Lean your open hand a little right. Tiny movements are lovely."
+                : wrist
                   ? endpoint === "lower"
-                    ? "Close your fingers gently, like a cozy little fist. No squeezing."
-                    : "Open your fingers, just as much as feels comfy."
-                  : endpoint === "lower"
-                    ? "Rest your hand where it feels comfy. Hold it for a little moment."
-                    : reach
-                      ? "Lift your hand just a little. Stop wherever feels comfy."
-                      : "Bend your arm just a little. Stop wherever feels comfy."}
+                    ? "Rest your forearm comfortably. Find a gentle starting spot for your hand."
+                    : "Gently tilt your hand up a little. Stop wherever feels comfy."
+                  : grip
+                    ? endpoint === "lower"
+                      ? "Close your fingers gently, like a cozy little fist. No squeezing."
+                      : "Open your fingers, just as much as feels comfy."
+                    : endpoint === "lower"
+                      ? "Rest your hand where it feels comfy. Hold it for a little moment."
+                      : reach
+                        ? "Lift your hand just a little. Stop wherever feels comfy."
+                        : "Bend your arm just a little. Stop wherever feels comfy."}
             </p>
             <div className="child-calibration-visual">
               <div className="calibration-camera">
@@ -421,17 +438,21 @@ export function Setup({
                   compact
                 />
                 <span>
-                  {wrist
+                  {ship
                     ? endpoint === "lower"
-                      ? "Rest gently"
-                      : "A little tilt"
-                    : grip
+                      ? "Lean left"
+                      : "Lean right"
+                    : wrist
                       ? endpoint === "lower"
-                        ? "Softly closed"
-                        : "Gently open"
-                      : endpoint === "lower"
-                        ? "A cozy place to start"
-                        : "A little lift is enough"}
+                        ? "Rest gently"
+                        : "A little tilt"
+                      : grip
+                        ? endpoint === "lower"
+                          ? "Softly closed"
+                          : "Gently open"
+                        : endpoint === "lower"
+                          ? "A cozy place to start"
+                          : "A little lift is enough"}
                 </span>
               </div>
             </div>
@@ -440,16 +461,24 @@ export function Setup({
                 <span>
                   {lower !== null ? <Check size={14} /> : <Hand size={15} />}
                 </span>
-                {wrist ? "Resting spot" : grip ? "Sleepy hand" : "Cozy spot"}
+                {ship
+                  ? "Left island"
+                  : wrist
+                    ? "Resting spot"
+                    : grip
+                      ? "Sleepy hand"
+                      : "Cozy spot"}
               </div>
               <i />
               <div className={endpoint === "upper" ? "spot active" : "spot"}>
                 <span>✦</span>
-                {wrist
-                  ? "Little flutter"
-                  : grip
-                    ? "Hello, flower!"
-                    : "Little light"}
+                {ship
+                  ? "Right island"
+                  : wrist
+                    ? "Little flutter"
+                    : grip
+                      ? "Hello, flower!"
+                      : "Little light"}
               </div>
             </div>
             {captureError && fresh && (
@@ -483,17 +512,21 @@ export function Setup({
               disabled={stable === null || !fresh}
               onClick={capture}
             >
-              {wrist
+              {ship
                 ? endpoint === "lower"
-                  ? "Save my gentle spot"
-                  : "Let’s help the butterflies!"
-                : grip
+                  ? "That’s my left island"
+                  : "Ahoy! Let’s sail!"
+                : wrist
                   ? endpoint === "lower"
-                    ? "That’s my sleepy hand"
-                    : "Let’s wake the flowers!"
-                  : endpoint === "lower"
-                    ? "Save my cozy spot"
-                    : "Let’s help Luma!"}{" "}
+                    ? "Save my gentle spot"
+                    : "Let’s help the butterflies!"
+                  : grip
+                    ? endpoint === "lower"
+                      ? "That’s my sleepy hand"
+                      : "Let’s wake the flowers!"
+                    : endpoint === "lower"
+                      ? "Save my cozy spot"
+                      : "Let’s help Luma!"}{" "}
               {endpoint === "lower" ? (
                 <Check size={17} />
               ) : (
@@ -530,13 +563,15 @@ export function Setup({
               </p>
               <div className="manual-range">
                 <label>
-                  {wrist
-                    ? "Resting hand tilt"
-                    : grip
-                      ? "Softly closed level"
-                      : reach
-                        ? "Resting hand level"
-                        : "Extended position"}
+                  {ship
+                    ? "Left steering lean"
+                    : wrist
+                      ? "Resting hand tilt"
+                      : grip
+                        ? "Softly closed level"
+                        : reach
+                          ? "Resting hand level"
+                          : "Extended position"}
                   <input
                     type="number"
                     min={movementLimits[settings.exercise].min}
@@ -547,13 +582,15 @@ export function Setup({
                   />
                 </label>
                 <label>
-                  {wrist
-                    ? "Comfortably raised tilt"
-                    : grip
-                      ? "Comfortably open level"
-                      : reach
-                        ? "Raised hand level"
-                        : "Bent position"}
+                  {ship
+                    ? "Right steering lean"
+                    : wrist
+                      ? "Comfortably raised tilt"
+                      : grip
+                        ? "Comfortably open level"
+                        : reach
+                          ? "Raised hand level"
+                          : "Bent position"}
                   <input
                     type="number"
                     min={movementLimits[settings.exercise].min}
@@ -565,25 +602,29 @@ export function Setup({
                 </label>
               </div>
               <p className="small">
-                {wrist
-                  ? "Tilt is the 2D hand direction in the picture, not an isolated anatomical wrist angle."
-                  : grip
-                    ? "Levels are fingertip distance relative to palm size. Keep the same hand visible."
-                    : reach
-                      ? "Levels are relative to shoulder width. Both shoulders and the selected wrist must be visible."
-                      : "Angles use 180° for extension and smaller values for bending."}
+                {ship
+                  ? "Steering follows the palm direction in the mirrored picture. Left is negative; right is positive. Use the same hand with fingers pointing up."
+                  : wrist
+                    ? "Tilt is the 2D hand direction in the picture, not an isolated anatomical wrist angle."
+                    : grip
+                      ? "Levels are fingertip distance relative to palm size. Keep the same hand visible."
+                      : reach
+                        ? "Levels are relative to shoulder width. Both shoulders and the selected wrist must be visible."
+                        : "Angles use 180° for extension and smaller values for bending."}
                 {lower !== null &&
                   ` First captured spot: ${lower.toFixed(grip || reach ? 2 : 1)}${grip || reach ? "" : "°"}.`}
               </p>
               {!manualValid && (
                 <p className="error-message">
-                  {wrist
-                    ? "The raised hand tilt must be at least 5° above the resting tilt."
-                    : grip
-                      ? "The open level must be at least 0.2 above the closed level."
-                      : reach
-                        ? "The raised level must be at least 0.12 above the resting level."
-                        : "The extended angle must be at least 5° larger than the bent angle."}
+                  {ship
+                    ? "Use two comfortable steering spots at least 5° apart, from −75 to 75°."
+                    : wrist
+                      ? "The raised hand tilt must be at least 5° above the resting tilt."
+                      : grip
+                        ? "The open level must be at least 0.2 above the closed level."
+                        : reach
+                          ? "The raised level must be at least 0.12 above the resting level."
+                          : "The extended angle must be at least 5° larger than the bent angle."}
                 </p>
               )}
               <button

@@ -5,7 +5,7 @@ import {
   type Landmark,
   type TrackingFrame,
 } from "./core";
-export type Exercise = "grip" | "reach" | "elbow" | "wrist";
+export type Exercise = "grip" | "reach" | "elbow" | "wrist" | "ship";
 export const exercises = {
   grip: {
     tab: "Sleepy Flowers",
@@ -58,6 +58,19 @@ export const exercises = {
     camera:
       "Show one hand from a slight side view, with your fingers pointing across the picture. Keep your wrist and knuckles visible.",
   },
+  ship: {
+    tab: "Pirate Ship",
+    hero: ["Little captains.", "Big adventures."],
+    intro: "Ahoy! A little ship is ready to sail.",
+    promise: "Tilt your hand. Sail to the sparkling islands.",
+    title: "Steer a little pirate ship",
+    short: "Tilt. Sail. Discover!",
+    description: "Gentle hands. Happy little voyages.",
+    up: "Tilt your open hand a little to the right.",
+    down: "Tilt it softly left. Sail back again.",
+    camera:
+      "Show one palm to the camera with fingers pointing up. Gently lean your hand left and right, like a little wave. Keep your wrist and knuckles visible.",
+  },
 } as const;
 /** Wrist height relative to the selected shoulder, in shoulder-width units. This is a 2D game input, not a clinical measure. */
 export function handHeight(
@@ -98,13 +111,15 @@ export function normalizeReach(value: number, lower: number, upper: number) {
   return clamp((value - lower) / (upper - lower));
 }
 export function movementValue(frame: TrackingFrame, exercise: Exercise) {
-  return exercise === "wrist"
-    ? (frame.tilt ?? null)
-    : exercise === "grip"
-      ? (frame.openness ?? null)
-      : exercise === "reach"
-        ? (frame.height ?? null)
-        : frame.angle;
+  return exercise === "ship"
+    ? (frame.steering ?? null)
+    : exercise === "wrist"
+      ? (frame.tilt ?? null)
+      : exercise === "grip"
+        ? (frame.openness ?? null)
+        : exercise === "reach"
+          ? (frame.height ?? null)
+          : frame.angle;
 }
 export function reachTrackingMessage(points: Landmark[], arm: Arm) {
   if (!points.length) return "Let’s see your shoulders and your waving hand.";
@@ -185,12 +200,52 @@ export function handTilt(points: Landmark[], aspect: number): number | null {
   if (Math.hypot(dx, dy) < 0.025) return null;
   return (Math.atan2(dy, Math.abs(dx)) * 180) / Math.PI;
 }
-export const exerciseOrder: Exercise[] = ["grip", "reach", "elbow", "wrist"];
+/** Signed, aspect-corrected hand lean in the mirrored camera preview.
+ * Upright is zero; screen-left is negative, screen-right positive.
+ * Uses the palm direction, not finger spread or an anatomical joint angle. */
+export function handSteering(
+  points: Landmark[],
+  aspect: number,
+): number | null {
+  const wrist = points[0],
+    knuckle = points[9];
+  if (
+    !wrist ||
+    !knuckle ||
+    !Number.isFinite(aspect) ||
+    aspect <= 0 ||
+    ![wrist, knuckle].every(
+      (p) =>
+        Number.isFinite(p.x) &&
+        Number.isFinite(p.y) &&
+        p.x >= 0 &&
+        p.x <= 1 &&
+        p.y >= 0 &&
+        p.y <= 1,
+    )
+  )
+    return null;
+  const dx = -(knuckle.x - wrist.x) * aspect,
+    dy = wrist.y - knuckle.y;
+  if (Math.hypot(dx, dy) < 0.025 || dy <= 0.01) return null;
+  const lean = (Math.atan2(dx, dy) * 180) / Math.PI;
+  return Math.abs(lean) <= 75 ? lean : null;
+}
+export const isHandExercise = (exercise: Exercise) =>
+  exercise === "grip" || exercise === "wrist" || exercise === "ship";
+export const exerciseOrder: Exercise[] = [
+  "grip",
+  "reach",
+  "elbow",
+  "wrist",
+  "ship",
+];
 export const movementLimits = {
   grip: { min: 0, max: 5, delta: 0.2, spread: 0.16, precision: 1000 },
   reach: { min: -4, max: 4, delta: 0.12, spread: 0.1, precision: 1000 },
   elbow: { min: 10, max: 180, delta: 5, spread: 6, precision: 10 },
   wrist: { min: -90, max: 90, delta: 5, spread: 6, precision: 10 },
+  ship: { min: -75, max: 75, delta: 5, spread: 6, precision: 10 },
 };
 export function validMovementRange(
   exercise: Exercise,
@@ -229,26 +284,32 @@ export type RangeSettings = {
   reachUpper: number;
   tiltLower: number;
   tiltUpper: number;
+  shipLower: number;
+  shipUpper: number;
 };
 export function getMovementRange(s: RangeSettings) {
-  return s.exercise === "grip"
-    ? { lower: s.gripLower, upper: s.gripUpper }
-    : s.exercise === "reach"
-      ? { lower: s.reachLower, upper: s.reachUpper }
-      : s.exercise === "wrist"
-        ? { lower: s.tiltLower, upper: s.tiltUpper }
-        : { lower: s.lower, upper: s.upper };
+  return s.exercise === "ship"
+    ? { lower: s.shipLower, upper: s.shipUpper }
+    : s.exercise === "grip"
+      ? { lower: s.gripLower, upper: s.gripUpper }
+      : s.exercise === "reach"
+        ? { lower: s.reachLower, upper: s.reachUpper }
+        : s.exercise === "wrist"
+          ? { lower: s.tiltLower, upper: s.tiltUpper }
+          : { lower: s.lower, upper: s.upper };
 }
 export function applyMovementRange<T extends RangeSettings>(
   s: T,
   lower: number,
   upper: number,
 ): T {
-  return s.exercise === "grip"
-    ? { ...s, gripLower: lower, gripUpper: upper }
-    : s.exercise === "reach"
-      ? { ...s, reachLower: lower, reachUpper: upper }
-      : s.exercise === "wrist"
-        ? { ...s, tiltLower: lower, tiltUpper: upper }
-        : { ...s, lower, upper };
+  return s.exercise === "ship"
+    ? { ...s, shipLower: lower, shipUpper: upper }
+    : s.exercise === "grip"
+      ? { ...s, gripLower: lower, gripUpper: upper }
+      : s.exercise === "reach"
+        ? { ...s, reachLower: lower, reachUpper: upper }
+        : s.exercise === "wrist"
+          ? { ...s, tiltLower: lower, tiltUpper: upper }
+          : { ...s, lower, upper };
 }

@@ -39,7 +39,8 @@ export function Settings({
   const reach = draft.exercise === "reach",
     grip = draft.exercise === "grip",
     wrist = draft.exercise === "wrist",
-    handMode = grip || wrist;
+    ship = draft.exercise === "ship",
+    handMode = grip || wrist || ship;
   const range = getMovementRange(draft);
   const valid = validMovementRange(draft.exercise, range.lower, range.upper);
   return (
@@ -74,6 +75,7 @@ export function Settings({
             onChange={(e) => set("exercise", e.target.value as Exercise)}
           >
             <option value="grip">Wake a sleepy flower · open & close</option>
+            <option value="ship">Pirate Ship · steer left & right</option>
             <option value="wrist">Butterfly Breeze · tilt & return</option>
             <option value="reach">Catch a firefly · reach & return</option>
             <option value="elbow">Give Luma a lift · bend & return</option>
@@ -109,13 +111,15 @@ export function Settings({
             </select>
           </label>
           <label>
-            {wrist
-              ? "Resting hand tilt"
-              : grip
-                ? "Softly closed hand"
-                : reach
-                  ? "Resting hand level"
-                  : "Lower position (extended)"}
+            {ship
+              ? "Left steering lean"
+              : wrist
+                ? "Resting hand tilt"
+                : grip
+                  ? "Softly closed hand"
+                  : reach
+                    ? "Resting hand level"
+                    : "Lower position (extended)"}
             <div className="number-input">
               <input
                 type="number"
@@ -133,13 +137,15 @@ export function Settings({
             </div>
           </label>
           <label>
-            {wrist
-              ? "Comfortably raised tilt"
-              : grip
-                ? "Comfortably open hand"
-                : reach
-                  ? "Raised hand level"
-                  : "Upper position (bent)"}
+            {ship
+              ? "Right steering lean"
+              : wrist
+                ? "Comfortably raised tilt"
+                : grip
+                  ? "Comfortably open hand"
+                  : reach
+                    ? "Raised hand level"
+                    : "Upper position (bent)"}
             <div className="number-input">
               <input
                 type="number"
@@ -159,13 +165,15 @@ export function Settings({
         </div>
         {!valid && (
           <p className="error-message">
-            {wrist
-              ? "Use a raised hand tilt at least 5° above its resting tilt (−90 to 90°)."
-              : grip
-                ? "The open hand level must be at least 0.2 above the closed level (0–5)."
-                : reach
-                  ? "The raised hand level must be at least 0.12 above the resting level (−4 to 4)."
-                  : "Use a lower-position angle at least 5° larger than the upper-position angle (10–180°)."}
+            {ship
+              ? "Use two comfortable steering spots at least 5° apart (−75 to 75°)."
+              : wrist
+                ? "Use a raised hand tilt at least 5° above its resting tilt (−90 to 90°)."
+                : grip
+                  ? "The open hand level must be at least 0.2 above the closed level (0–5)."
+                  : reach
+                    ? "The raised hand level must be at least 0.12 above the resting level (−4 to 4)."
+                    : "Use a lower-position angle at least 5° larger than the upper-position angle (10–180°)."}
           </p>
         )}
         <div className="setting-row">
@@ -229,7 +237,7 @@ export function Settings({
             />
           </div>
         ))}
-        {(grip || wrist) && (
+        {handMode && (
           <p className="hand-filter-note">
             Hand steadiness: a short median filter removes single-frame jumps,
             then a time-aware EMA softens the motion. Missing tracking still

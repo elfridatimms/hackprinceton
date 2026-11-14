@@ -19,7 +19,7 @@ describe("Camera / MediaPipe lifecycle", () => {
     host: HTMLDivElement,
     tracking: Tracking,
     arm: "left" | "right",
-    exercise: "elbow" | "grip" | "wrist",
+    exercise: "elbow" | "grip" | "wrist" | "ship",
     stop: ReturnType<typeof vi.fn>,
     getUserMedia: ReturnType<typeof vi.fn>;
   const detector = { detectForVideo: vi.fn(), close: vi.fn() };
@@ -221,5 +221,28 @@ describe("Camera / MediaPipe lifecycle", () => {
     expect(tracking!.frame.tilt).toBeGreaterThan(0);
     expect(tracking!.frame.openness).toBeNull();
     expect(tracking!.frame.angle).toBeNull();
+  });
+  it("uses filtered signed hand steering for Pirate Ship, with other signals empty", async () => {
+    exercise = "ship";
+    act(() => root.render(<Probe />));
+    const points = Array.from({ length: 21 }, () => ({ x: 0.5, y: 0.5 }));
+    points[0] = { x: 0.5, y: 0.7 };
+    points[9] = { x: 0.6, y: 0.4 };
+    detector.detectForVideo.mockReturnValue({
+      landmarks: [points],
+      handedness: [[{ categoryName: "Left", score: 0.98 }]],
+    });
+    await act(async () => {
+      await tracking.start();
+    });
+    expect(vision.handCreate).toHaveBeenCalledOnce();
+    expect(vision.create).not.toHaveBeenCalled();
+    expect(tracking!.frame.valid).toBe(true);
+    expect(tracking!.frame.steering).toBeLessThan(0);
+    expect(tracking!.frame.tilt).toBeNull();
+    expect(tracking!.frame.openness).toBeNull();
+    expect(tracking!.frame.angle).toBeNull();
+    act(() => tracking.stop());
+    expect(tracking!.frame.steering).toBeUndefined();
   });
 });

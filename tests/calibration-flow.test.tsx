@@ -146,6 +146,7 @@ describe("The calibration screen that previously trapped the user", () => {
           openness: valid ? angle : null,
           height: valid ? angle : null,
           tilt: valid ? angle : null,
+          steering: valid ? angle : null,
           valid,
           at: performance.now(),
         },
@@ -261,4 +262,18 @@ describe("The calibration screen that previously trapped the user", () => {
     );
     expect(reset).toHaveBeenCalledWith("practice");
   });
+  it("captures comfortable left and right steering spots and proceeds to ship practice", () => {
+    settings = { ...settings, exercise: "ship" };
+    render();
+    frames(-18);
+    expect(host.textContent).toContain("A little lean to the left.");
+    expect(button("Left hand")).toBeUndefined();
+    click("Remember this position");
+    frames(22);
+    expect(host.textContent).toContain("A little lean to the right.");
+    click("Remember this position");
+    expect(save).toHaveBeenLastCalledWith(expect.objectContaining({exercise:"ship",shipLower:-18,shipUpper:22,tiltLower:defaultSettings.tiltLower}));
+    expect(reset).toHaveBeenCalledWith("practice");
+  });
+
 });

@@ -203,12 +203,10 @@ export default function App() {
       was !== "paused" &&
       window.innerWidth < 620
     )
-      document
-        .getElementById("forest-game-panel")
-        ?.scrollIntoView({
-          block: "start",
-          behavior: settings.reducedMotion ? "auto" : "smooth",
-        });
+      document.getElementById("forest-game-panel")?.scrollIntoView({
+        block: "start",
+        behavior: settings.reducedMotion ? "auto" : "smooth",
+      });
   }, [session.phase, settings.reducedMotion]);
   const isHome = ["welcome", "setup", "calibration"].includes(session.phase);
   const progress = Math.min(100, (session.cycles / settings.target) * 100);
@@ -267,6 +265,7 @@ export default function App() {
               <Forest
                 key="welcome-forest"
                 world={session.world}
+                exercise={settings.exercise}
                 welcome
                 onCollect={session.collect}
               />
@@ -298,7 +297,11 @@ export default function App() {
                 </div>
               </div>
               <div className="meet-luma">
-                <span>Meet Luma</span>
+                <span>
+                  {settings.exercise === "ship"
+                    ? "A little island awaits"
+                    : "Meet Luma"}
+                </span>
                 <svg viewBox="0 0 80 48" fill="none">
                   <path
                     d="M1 2q50-8 58 24l5 13m-13-7 13 7 6-13"
@@ -309,8 +312,10 @@ export default function App() {
                 </svg>
               </div>
               <div className="scene-caption">
-                <span className="tiny-firefly">✦</span> THE FOREST IS WAITING
-                FOR YOU
+                <span className="tiny-firefly">✦</span>{" "}
+                {settings.exercise === "ship"
+                  ? "YOUR LITTLE SHIP IS READY TO SAIL"
+                  : "THE FOREST IS WAITING FOR YOU"}
               </div>
               <div className="scene-bottom-stamp">
                 <Leaf size={14} /> A little wonder. A lot of heart.
@@ -351,23 +356,39 @@ export default function App() {
             <section className="journey-teaser">
               <div>
                 <span className="eyebrow">ONE LITTLE JOURNEY</span>
-                <h2>A forest to bring back to light.</h2>
+                <h2>
+                  {settings.exercise === "ship"
+                    ? "A little sea of sparkling discoveries."
+                    : "A forest to bring back to light."}
+                </h2>
               </div>
               <div className="chapter-preview">
                 <span className="chapter-dot meadow">
                   <Leaf size={18} />
                 </span>
-                <span>The waking meadow</span>
+                <span>
+                  {settings.exercise === "ship"
+                    ? "The little lagoon"
+                    : "The waking meadow"}
+                </span>
                 <i />
                 <span className="chapter-dot woods">
                   <Footprints size={18} />
                 </span>
-                <span>The whispering woods</span>
+                <span>
+                  {settings.exercise === "ship"
+                    ? "Sparkle Island"
+                    : "The whispering woods"}
+                </span>
                 <i />
                 <span className="chapter-dot grove">
                   <TreeIllustration />
                 </span>
-                <span>The lantern grove</span>
+                <span>
+                  {settings.exercise === "ship"
+                    ? "A happy homecoming"
+                    : "The lantern grove"}
+                </span>
               </div>
               <span className="teaser-end">
                 Let’s make a little magic <Sparkles size={15} />
@@ -388,7 +409,7 @@ export default function App() {
                 <span />{" "}
                 {session.mode === "demo"
                   ? "Keyboard & slider"
-                  : settings.exercise === "grip"
+                  : ["grip", "wrist", "ship"].includes(settings.exercise)
                     ? "One playing hand"
                     : settings.arm + " arm"}
               </span>
@@ -400,6 +421,7 @@ export default function App() {
                 <Forest
                   key="play-forest"
                   world={session.world}
+                  exercise={settings.exercise}
                   onCollect={session.collect}
                 />
                 <div className="game-hud">
@@ -409,7 +431,15 @@ export default function App() {
                     </span>
                     <div>
                       <small>CHAPTER {section + 1} OF 3</small>
-                      <strong>{chapters[section]}</strong>
+                      <strong>
+                        {settings.exercise === "ship"
+                          ? [
+                              "The little lagoon",
+                              "Sparkle Island",
+                              "A happy homecoming",
+                            ][section]
+                          : chapters[section]}
+                      </strong>
                     </div>
                   </div>
                   <div className="journey-progress">
@@ -457,6 +487,18 @@ export default function App() {
                   <strong>{session.fireflies}</strong>
                   <span>little lights</span>
                 </div>
+                {settings.exercise === "ship" && (
+                  <div
+                    className="pirate-voyage"
+                    aria-label={`${session.cycles} of ${settings.target} voyages completed`}
+                  >
+                    <span>⚑ LITTLE CAPTAIN’S LOG</span>
+                    <strong>
+                      {session.cycles} / {settings.target} little voyages
+                    </strong>
+                    <small>Sail to a glowing ring. Then sail back.</small>
+                  </div>
+                )}
                 {settings.exercise === "grip" && (
                   <div
                     className="little-flower-patch"
@@ -497,13 +539,15 @@ export default function App() {
                         : "Reconnect your camera to keep exploring."}
                     </p>
                     <span>
-                      {settings.exercise === "wrist"
-                        ? "Show your wrist and knuckles to the camera."
-                        : settings.exercise === "grip"
-                          ? "Show your palm and fingertips to the camera."
-                          : settings.exercise === "reach"
-                            ? "Let the camera see your shoulders and hand."
-                            : "Bring your shoulder, elbow, and wrist into view."}
+                      {settings.exercise === "ship"
+                        ? "Show your palm with fingers pointing up."
+                        : settings.exercise === "wrist"
+                          ? "Show your wrist and knuckles to the camera."
+                          : settings.exercise === "grip"
+                            ? "Show your palm and fingertips to the camera."
+                            : settings.exercise === "reach"
+                              ? "Let the camera see your shoulders and hand."
+                              : "Bring your shoulder, elbow, and wrist into view."}
                     </span>
                     {tracking.status !== "on" && (
                       <button
@@ -536,13 +580,19 @@ export default function App() {
                       {practiceDone
                         ? settings.exercise === "grip"
                           ? "Ready to wake the sleepy flowers?"
-                          : settings.exercise === "wrist"
-                            ? "Ready to give a butterfly a breeze?"
-                            : "Ready to bring the fireflies home?"
+                          : settings.exercise === "ship"
+                            ? "Ready to sail to Sparkle Island?"
+                            : settings.exercise === "wrist"
+                              ? "Ready to give a butterfly a breeze?"
+                              : "Ready to bring the fireflies home?"
                         : session.mode === "demo"
-                          ? practiceUp
-                            ? "Press ↓ or move the slider down."
-                            : "Press ↑ or move the slider up."
+                          ? settings.exercise === "ship"
+                            ? practiceUp
+                              ? "Press ← or slide left."
+                              : "Press → or slide right."
+                            : practiceUp
+                              ? "Press ↓ or move the slider down."
+                              : "Press ↑ or move the slider up."
                           : practiceUp
                             ? exercises[settings.exercise].down
                             : exercises[settings.exercise].up}
@@ -554,9 +604,11 @@ export default function App() {
                       >
                         {settings.exercise === "grip"
                           ? "Let’s wake the flowers!"
-                          : settings.exercise === "wrist"
-                            ? "Let’s help the butterflies!"
-                            : "Let’s find the fireflies"}{" "}
+                          : settings.exercise === "ship"
+                            ? "Ahoy! Let’s sail!"
+                            : settings.exercise === "wrist"
+                              ? "Let’s help the butterflies!"
+                              : "Let’s find the fireflies"}{" "}
                         <ArrowRight size={16} />
                       </button>
                     )}
@@ -566,11 +618,20 @@ export default function App() {
                   <div className="game-encouragement">
                     <span>✦</span>
                     {
-                      [
-                        "Take your time. Luma is with you.",
-                        "Every little light has a way home.",
-                        "The grove is getting closer.",
-                      ][tip]
+                      (settings.exercise === "ship"
+                        ? [
+                            "Ahoy, little captain. Take your time.",
+                            "A little tilt. A lovely voyage.",
+                            "Sail to the sparkling ring.",
+                            "The islands are happy to see you.",
+                            "Rest whenever you like.",
+                            "Your next little light is waiting.",
+                          ]
+                        : [
+                            "Take your time. Luma is with you.",
+                            "Every little light has a way home.",
+                            "The grove is getting closer.",
+                          ])[tip]
                     }
                   </div>
                 )}
@@ -611,7 +672,11 @@ export default function App() {
                     <i style={{ left: `${session.position * 100}%` }} />
                   </div>
                 </div>
-                <span className="movement-words">lower · higher</span>
+                <span className="movement-words">
+                  {settings.exercise === "ship"
+                    ? "left · right"
+                    : "lower · higher"}
+                </span>
               </div>
               <div className="bottom-stat">
                 <strong>
@@ -621,7 +686,9 @@ export default function App() {
                 <span>
                   {settings.exercise === "grip"
                     ? "flowers woken"
-                    : "complete cycles"}
+                    : settings.exercise === "ship"
+                      ? "little voyages"
+                      : "complete cycles"}
                 </span>
               </div>
               <div className="bottom-stat time-stat">
@@ -633,10 +700,10 @@ export default function App() {
                 {session.mode === "demo"
                   ? "Demo input"
                   : session.waiting
-                    ? settings.exercise === "grip"
+                    ? ["grip", "wrist", "ship"].includes(settings.exercise)
                       ? "Finding your hand"
                       : "Finding your arm"
-                    : settings.exercise === "grip"
+                    : ["grip", "wrist", "ship"].includes(settings.exercise)
                       ? "Hand in view"
                       : "Arm in view"}
               </div>
@@ -791,7 +858,9 @@ export default function App() {
             </span>
             <h2 id="result-title">
               {session.summary.finished
-                ? "You brought the forest back to light."
+                ? settings.exercise === "ship"
+                  ? "Ahoy! What a lovely little voyage."
+                  : "You brought the forest back to light."
                 : "Thanks for exploring with Luma."}
             </h2>
             <p>
@@ -805,7 +874,9 @@ export default function App() {
                 <span>
                   {settings.exercise === "grip"
                     ? "flowers woken"
-                    : "complete cycles"}
+                    : settings.exercise === "ship"
+                      ? "little voyages"
+                      : "complete cycles"}
                 </span>
               </div>
               <div>
@@ -814,7 +885,11 @@ export default function App() {
               </div>
               <div>
                 <strong>{session.summary.fireflies}</strong>
-                <span>fireflies found</span>
+                <span>
+                  {settings.exercise === "ship"
+                    ? "island lights found"
+                    : "fireflies found"}
+                </span>
               </div>
             </div>
             <div className="result-mode">
@@ -829,7 +904,10 @@ export default function App() {
                 session.reset("practice");
               }}
             >
-              Visit the forest again <ArrowRight size={17} />
+              {settings.exercise === "ship"
+                ? "Sail together again"
+                : "Visit the forest again"}{" "}
+              <ArrowRight size={17} />
             </button>
             <button
               className="button secondary full"

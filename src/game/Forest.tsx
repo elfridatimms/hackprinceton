@@ -1,3 +1,5 @@
+import { PirateBay } from "./PirateBay";
+import type { Exercise } from "../movement/exercises";
 import { GameWorldObjects } from "./GameWorldObjects";
 import { MagicFlower } from "./MagicFlower";
 import {
@@ -735,18 +737,24 @@ class SceneBoundary extends Component<
     );
   }
 }
-function Framing({ welcome }: { welcome: boolean }) {
+function Framing({ welcome, ship }: { welcome: boolean; ship: boolean }) {
   const { camera, size } = useThree();
   useFrame(() => {
     const ortho = camera as THREE.OrthographicCamera;
     const small = size.width < 560;
-    const z = small ? (welcome ? 43 : 39) : Math.min(58, size.width / 20.5);
+    const z = ship
+      ? Math.min(61, size.width / (small ? 10 : 17))
+      : small
+        ? welcome
+          ? 43
+          : 39
+        : Math.min(58, size.width / 20.5);
     if (ortho.zoom !== z) {
       ortho.zoom = z;
       ortho.updateProjectionMatrix();
     }
-    const x = small ? (welcome ? 3.5 : -0.4) : 0;
-    const y = small && welcome ? 6.1 : 1.7;
+    const x = ship ? 0 : small ? (welcome ? 3.5 : -0.4) : 0;
+    const y = ship ? (welcome ? 0.6 : 0.8) : small && welcome ? 6.1 : 1.7;
     camera.position.set(x, y + 3.3, 22);
     camera.lookAt(x, y, 0);
   });
@@ -755,15 +763,18 @@ function Framing({ welcome }: { welcome: boolean }) {
 export const Forest = memo(function Forest({
   world,
   welcome = false,
+  exercise,
   onCollect,
 }: {
   world: React.RefObject<WorldState>;
   welcome?: boolean;
+  exercise?: Exercise;
   onCollect: () => void;
 }) {
   return (
     <SceneBoundary>
       <Canvas
+        style={{ position: "absolute", inset: 0 }}
         orthographic
         camera={{ position: [0, 5, 22], zoom: 54, near: 0.1, far: 65 }}
         dpr={[1, 1.65]}
@@ -778,8 +789,12 @@ export const Forest = memo(function Forest({
           gl.toneMappingExposure = 1;
         }}
       >
-        <Framing welcome={welcome} />
-        <Scenery world={world} welcome={welcome} onCollect={onCollect} />
+        <Framing welcome={welcome} ship={exercise === "ship"} />
+        {exercise === "ship" ? (
+          <PirateBay world={world} welcome={welcome} onCollect={onCollect} />
+        ) : (
+          <Scenery world={world} welcome={welcome} onCollect={onCollect} />
+        )}
       </Canvas>
     </SceneBoundary>
   );

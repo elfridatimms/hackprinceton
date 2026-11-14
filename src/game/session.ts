@@ -26,6 +26,8 @@ export type Settings = {
   gripUpper: number;
   tiltLower: number;
   tiltUpper: number;
+  shipLower: number;
+  shipUpper: number;
   reachLower: number;
   reachUpper: number;
   arm: "left" | "right";
@@ -55,6 +57,8 @@ export const defaultSettings: Settings = {
   gripUpper: 2.2,
   tiltLower: 10,
   tiltUpper: 55,
+  shipLower: -25,
+  shipUpper: 25,
   reachLower: -1,
   reachUpper: 0.1,
   arm: "right",
@@ -212,16 +216,26 @@ export function useSession(
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement).matches("input,select,textarea")) return;
-      if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+      const ship = current.current.settings.exercise === "ship";
+      if ((e.target as HTMLElement).closest('[role="tablist"]')) return;
+      if (
+        e.key === "ArrowUp" ||
+        e.key === "ArrowDown" ||
+        (ship && (e.key === "ArrowLeft" || e.key === "ArrowRight"))
+      ) {
         e.preventDefault();
-        keys.current[e.key === "ArrowUp" ? "up" : "down"] = true;
+        keys.current[
+          e.key === "ArrowUp" || e.key === "ArrowRight" ? "up" : "down"
+        ] = true;
       }
       if (e.key === "Escape" && current.current.phase === "playing")
         transition("paused");
     };
     const up = (e: KeyboardEvent) => {
-      if (e.key === "ArrowUp") keys.current.up = false;
-      if (e.key === "ArrowDown") keys.current.down = false;
+      if (e.key === "ArrowUp" || e.key === "ArrowRight")
+        keys.current.up = false;
+      if (e.key === "ArrowDown" || e.key === "ArrowLeft")
+        keys.current.down = false;
     };
     const blur = () => {
       keys.current = { up: false, down: false };
@@ -265,7 +279,13 @@ export function useSession(
         valid = g.canCount;
         waitingNow = g.waiting || !valid;
         if (valid) {
-          if (
+          if (c.settings.exercise === "ship" && c.frame.steering != null)
+            control.current = normalizeReach(
+              c.frame.steering,
+              c.settings.shipLower,
+              c.settings.shipUpper,
+            );
+          else if (
             c.settings.exercise === "wrist" &&
             c.frame.tilt !== null &&
             c.frame.tilt !== undefined

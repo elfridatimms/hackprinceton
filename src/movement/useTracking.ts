@@ -3,6 +3,8 @@ import {
   handHeight,
   handOpenness,
   handTilt,
+  handSteering,
+  isHandExercise,
   reachTrackingMessage,
   type Exercise,
 } from "./exercises";
@@ -51,7 +53,7 @@ export function useTracking(
   const [error, setError] = useState("");
   const [frame, setFrame] = useState<TrackingFrame>(EMPTY);
   const diagnostics = useRef<TrackingDiagnostics>({
-    build: "forest-games-5",
+    build: "pirate-bay-6",
     stage: "Camera off",
     engine: "CPU",
     video: "—",
@@ -68,6 +70,7 @@ export function useTracking(
   const lockedHand = useRef<string | null>(null);
   const gripFilter = useRef(new MovementFilter(0.16, 0.012));
   const tiltFilter = useRef(new MovementFilter(0.12, 0.4));
+  const steeringFilter = useRef(new MovementFilter(0.12, 0.4));
   const modelExercise = useRef<Exercise | null>(null);
   armRef.current = arm;
   const exerciseRef = useRef(exercise);
@@ -92,6 +95,7 @@ export function useTracking(
     lockedHand.current = null;
     gripFilter.current.reset();
     tiltFilter.current.reset();
+    steeringFilter.current.reset();
     modelExercise.current = null;
     setFrame(EMPTY);
     setStatus("off");
@@ -102,7 +106,7 @@ export function useTracking(
     setStatus("loading");
     setError("");
     diagnostics.current = {
-      build: "forest-games-5",
+      build: "pirate-bay-6",
       stage: "Waiting for camera permission",
       engine: "CPU",
       video: "—",
@@ -162,20 +166,19 @@ export function useTracking(
         });
       // CPU avoids WebGL warm-up. Each exercise uses the model it actually needs.
       const activeExercise = exerciseRef.current;
-      pendingModel =
-        activeExercise === "grip" || activeExercise === "wrist"
-          ? await HandLandmarker.createFromOptions(files, {
-              baseOptions: {
-                modelAssetPath: "/models/hand_landmarker.task",
-                delegate: "CPU",
-              },
-              runningMode: "VIDEO",
-              numHands: 1,
-              minHandDetectionConfidence: 0.5,
-              minHandPresenceConfidence: 0.5,
-              minTrackingConfidence: 0.5,
-            })
-          : await createModel("CPU");
+      pendingModel = isHandExercise(activeExercise)
+        ? await HandLandmarker.createFromOptions(files, {
+            baseOptions: {
+              modelAssetPath: "/models/hand_landmarker.task",
+              delegate: "CPU",
+            },
+            runningMode: "VIDEO",
+            numHands: 1,
+            minHandDetectionConfidence: 0.5,
+            minHandPresenceConfidence: 0.5,
+            minTrackingConfidence: 0.5,
+          })
+        : await createModel("CPU");
 
       if (id !== generation.current) {
         pending.getTracks().forEach((t) => t.stop());
@@ -183,10 +186,9 @@ export function useTracking(
         return;
       }
       modelExercise.current = activeExercise;
-      diagnostics.current.engine =
-        activeExercise === "grip" || activeExercise === "wrist"
-          ? "CPU · hand tracker"
-          : "CPU · pose tracker";
+      diagnostics.current.engine = isHandExercise(activeExercise)
+        ? "CPU · hand tracker"
+        : "CPU · pose tracker";
       model.current = pendingModel;
       diagnostics.current.stage = "Waiting for a visible arm";
       setStatus("on");
@@ -211,7 +213,8 @@ export function useTracking(
             const points = result.landmarks[0] ?? [];
             const isGrip = exerciseRef.current === "grip";
             const isWrist = exerciseRef.current === "wrist";
-            const handMode = isGrip || isWrist;
+            const isShip = exerciseRef.current === "ship";
+            const handMode = isHandExercise(exerciseRef.current);
             const handedness =
               "handedness" in result ? result.handedness[0]?.[0] : undefined;
             const label = handedness?.categoryName ?? null;
@@ -233,7 +236,15 @@ export function useTracking(
               isWrist && confidence >= 0.5 && sameHand
                 ? handTilt(points, el.videoWidth / el.videoHeight)
                 : null;
+            const rawSteering =
+              isShip && confidence >= 0.5 && sameHand
+                ? handSteering(points, el.videoWidth / el.videoHeight)
+                : null;
             const timely = inferenceMs <= FRAME_MAX_AGE_MS;
+            const steering = steeringFilter.current.update(
+              timely ? rawSteering : null,
+              now,
+            );
             const openness = gripFilter.current.update(
               timely ? rawOpenness : null,
               now,
@@ -257,17 +268,21 @@ export function useTracking(
                   el.videoWidth / el.videoHeight,
                 );
             const isReach = exerciseRef.current === "reach";
-            const detected = isWrist
-              ? tilt !== null
-              : isGrip
-                ? openness !== null
-                : isReach
-                  ? height !== null
-                  : angle !== null;
+            const detected = isShip
+              ? steering !== null
+              : isWrist
+                ? tilt !== null
+                : isGrip
+                  ? openness !== null
+                  : isReach
+                    ? height !== null
+                    : angle !== null;
             const missing = handMode
               ? !sameHand && label
                 ? "Bring your playing hand back."
-                : "Show your palm. Keep your wrist and fingers in the picture."
+                : isShip
+                  ? "Show your palm with fingers up, like a little wave."
+                  : "Show your palm. Keep your wrist and fingers in the picture."
               : isReach
                 ? reachTrackingMessage(points, armRef.current)
                 : armTrackingMessage(points, armRef.current);
@@ -282,6 +297,7 @@ export function useTracking(
               openness: timely ? openness : null,
               rawOpenness: timely ? rawOpenness : null,
               tilt: timely ? tilt : null,
+              steering: timely ? steering : null,
               angle: timely ? angle : null,
               at: now,
               points,
@@ -297,6 +313,7 @@ export function useTracking(
             if (now - lastMeasurementAt > FRAME_MAX_AGE_MS) {
               gripFilter.current.reset();
               tiltFilter.current.reset();
+              steeringFilter.current.reset();
             }
             setFrame((previous) =>
               now - previous.at > FRAME_MAX_AGE_MS
@@ -312,6 +329,7 @@ export function useTracking(
         } catch (cause) {
           gripFilter.current.reset();
           tiltFilter.current.reset();
+          steeringFilter.current.reset();
           diagnostics.current.stage = "Tracking error";
           diagnostics.current.lastError =
             cause instanceof Error ? cause.message : String(cause);

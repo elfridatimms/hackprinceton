@@ -145,6 +145,7 @@ function Check() {
             openness: tracking.frame.openness,
             rawOpenness: tracking.frame.rawOpenness,
             tilt: tracking.frame.tilt,
+            steering: tracking.frame.steering,
             ageMs: Math.round(performance.now() - tracking.frame.at),
             videoAttached: tracking.video.current?.isConnected,
             diagnostics: tracking.diagnostics,

@@ -73,6 +73,26 @@ export function GameGlyph({ exercise }: { exercise: Exercise }) {
             strokeLinecap="round"
           />
         </>
+      ) : exercise === "ship" ? (
+        <>
+          <path d="M8 35h42L40 47H18z" fill="#bb8a6e" />
+          <path
+            d="M26 35V7"
+            stroke="#938167"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+          />
+          <path d="M29 10q15 7 17 21H29z" fill="#ecd9ad" />
+          <path d="M25 8 13 11l12 5z" fill="#7baba6" />
+          <circle cx="23" cy="40" r="2" fill="#f9df9f" />
+          <circle cx="36" cy="40" r="2" fill="#f9df9f" />
+          <path
+            d="M5 50q5-4 10 0t10 0 10 0 10 0 7 0"
+            stroke="#9dbfbc"
+            strokeWidth="2"
+            strokeLinecap="round"
+          />
+        </>
       ) : (
         <>
           <g className="glyph-butterfly-wings">

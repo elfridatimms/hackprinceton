@@ -1,3 +1,4 @@
+import { SteeringGuide } from "./SteeringGuide";
 import { TiltGuide } from "./TiltGuide";
 import { GripGuide } from "./GripGuide";
 import type { Exercise } from "../movement/exercises";
@@ -11,6 +12,8 @@ export function MovementGuide({
   direction?: "loop" | "up" | "down" | "low" | "high";
   compact?: boolean;
 }) {
+  if (exercise === "ship")
+    return <SteeringGuide direction={direction} compact={compact} />;
   if (exercise === "wrist")
     return <TiltGuide direction={direction} compact={compact} />;
   if (exercise === "grip")

@@ -7,6 +7,8 @@ import {
   ChevronDown,
   ChevronUp,
   ArrowUp,
+  ArrowLeft,
+  ArrowRight,
   ArrowDown,
   Keyboard,
   Hand,
@@ -46,7 +48,11 @@ export function CameraFeed({
           ctx.drawImage(vid, 0, 0, c.width, c.height);
           const frame = frameRef.current;
           if (performance.now() - frame.at < FRAME_MAX_AGE_MS) {
-            if (exercise === "grip" || exercise === "wrist") {
+            if (
+              exercise === "grip" ||
+              exercise === "wrist" ||
+              exercise === "ship"
+            ) {
               if (frame.valid) {
                 const links = [
                   [0, 1],
@@ -214,38 +220,62 @@ export function InputPanel({
                   <Hand size={32} strokeWidth={1.3} />
                   <div>
                     <kbd>
-                      <ArrowUp size={16} />
+                      {exercise === "ship" ? (
+                        <ArrowLeft size={16} />
+                      ) : (
+                        <ArrowUp size={16} />
+                      )}
                     </kbd>
                     <kbd>
-                      <ArrowDown size={16} />
+                      {exercise === "ship" ? (
+                        <ArrowRight size={16} />
+                      ) : (
+                        <ArrowDown size={16} />
+                      )}
                     </kbd>
                   </div>
                 </div>
                 <h3>
-                  {exercise === "grip"
-                    ? "Open. Close. Bloom!"
-                    : "Your little magic move."}
+                  {exercise === "ship"
+                    ? "Ahoy, little captain!"
+                    : exercise === "grip"
+                      ? "Open. Close. Bloom!"
+                      : "Your little magic move."}
                 </h3>
                 <p>
-                  Use your arrow keys, or move the slider. Luma follows you.
+                  {exercise === "ship"
+                    ? "Use ← → or slide left and right. Your little ship follows you."
+                    : "Use your arrow keys, or move the slider. Luma follows you."}
                 </p>
-                <label className="demo-slider">
+                <label
+                  className={
+                    "demo-slider " + (exercise === "ship" ? "ship-slider" : "")
+                  }
+                >
                   <span>
-                    {exercise === "wrist"
-                      ? "Lift the butterfly"
-                      : exercise === "grip"
-                        ? "Open the flower"
-                        : "Fly higher"}{" "}
-                    <ArrowUp size={14} />
+                    {exercise === "ship"
+                      ? "Left island"
+                      : exercise === "wrist"
+                        ? "Lift the butterfly"
+                        : exercise === "grip"
+                          ? "Open the flower"
+                          : "Fly higher"}{" "}
+                    {exercise === "ship" ? (
+                      <ArrowLeft size={14} />
+                    ) : (
+                      <ArrowUp size={14} />
+                    )}
                   </span>
                   <input
                     type="range"
                     aria-label={
-                      exercise === "wrist"
-                        ? "Demo hand tilt"
-                        : exercise === "grip"
-                          ? "Demo hand openness"
-                          : "Demo flight height"
+                      exercise === "ship"
+                        ? "Demo ship steering"
+                        : exercise === "wrist"
+                          ? "Demo hand tilt"
+                          : exercise === "grip"
+                            ? "Demo hand openness"
+                            : "Demo flight height"
                     }
                     min="0"
                     max="1"
@@ -256,12 +286,18 @@ export function InputPanel({
                     }}
                   />
                   <span>
-                    {exercise === "wrist"
-                      ? "Come softly back"
-                      : exercise === "grip"
-                        ? "Close softly"
-                        : "Fly lower"}{" "}
-                    <ArrowDown size={14} />
+                    {exercise === "ship"
+                      ? "Right island"
+                      : exercise === "wrist"
+                        ? "Come softly back"
+                        : exercise === "grip"
+                          ? "Close softly"
+                          : "Fly lower"}{" "}
+                    {exercise === "ship" ? (
+                      <ArrowRight size={14} />
+                    ) : (
+                      <ArrowDown size={14} />
+                    )}
                   </span>
                 </label>
                 <div className="mode-note">
@@ -282,14 +318,16 @@ export function InputPanel({
                   {tracking.frame.message}
                 </div>
                 <p className="small">
-                  {exercise === "wrist"
-                    ? "One playing hand · fingers across the picture"
-                    : exercise === "grip"
-                      ? "One playing hand · palm to camera"
-                      : exercise === "reach"
-                        ? "Front view · both shoulders visible"
-                        : (arm === "left" ? "Left" : "Right") +
-                          " arm · side-on view"}
+                  {exercise === "ship"
+                    ? "One playing hand · palm forward, fingers up"
+                    : exercise === "wrist"
+                      ? "One playing hand · fingers across the picture"
+                      : exercise === "grip"
+                        ? "One playing hand · palm to camera"
+                        : exercise === "reach"
+                          ? "Front view · both shoulders visible"
+                          : (arm === "left" ? "Left" : "Right") +
+                            " arm · side-on view"}
                 </p>
                 <button className="text-button" onClick={onCameraOff}>
                   <CameraOff size={15} /> Turn camera off
