@@ -132,7 +132,9 @@ export function InputPanel({
   exercise = "grip",
   range,
   reduced = false,
+  sourceLabel,
 }: {
+  sourceLabel?: string;
   range?: { lower: number; upper: number };
   reduced?: boolean;
   session: Session;
@@ -268,6 +270,7 @@ export function InputPanel({
                   arm={arm}
                   exercise={exercise}
                   reduced={reduced}
+                  sourceLabel={sourceLabel}
                   guide={() => {
                     const w = session.world.current;
                     const live = w.phase === "playing" || w.phase === "practice";

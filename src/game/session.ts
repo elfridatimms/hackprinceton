@@ -50,6 +50,8 @@ export type Settings = {
   muted: boolean;
   reducedMotion: boolean;
   saveSummaries: boolean;
+  /** Presentation mode: play games from recorded clips instead of the camera. */
+  demoVideo: boolean;
 };
 export type Summary = {
   exercise?: Exercise;
@@ -93,6 +95,7 @@ export const defaultSettings: Settings = {
   muted: true,
   reducedMotion: false,
   saveSummaries: false,
+  demoVideo: false,
 };
 export function loadSettings(): Settings {
   try {

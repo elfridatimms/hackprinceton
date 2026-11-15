@@ -40,7 +40,7 @@ export type TrackingDiagnostics = {
   frames: number;
   lastError: string;
 };
-const requestCameraStream = () =>
+export const requestCameraStream = () =>
   navigator.mediaDevices.getUserMedia({
     audio: false,
     video: {

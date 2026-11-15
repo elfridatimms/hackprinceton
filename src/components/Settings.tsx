@@ -25,12 +25,14 @@ export function Settings({
   onClose,
   onRecalibrate,
   onDetails,
+  onDemoVideo,
 }: {
   settings: Config;
   onSave: (s: Config) => void;
   onClose: () => void;
   onRecalibrate: () => void;
   onDetails: () => void;
+  onDemoVideo: () => void;
 }) {
   const [draft, setDraft] = useState(settings),
     [cleared, setCleared] = useState(false);
@@ -265,6 +267,10 @@ export function Settings({
           </button>
           <button onClick={onDetails}>
             Session details <ChevronRight size={15} />
+          </button>
+          <button onClick={onDemoVideo}>
+            Recorded demo videos {settings.demoVideo ? "· on" : ""}{" "}
+            <ChevronRight size={15} />
           </button>
           <button
             onClick={() => {

@@ -7,7 +7,7 @@ import {
   getMovementRange,
   type Exercise,
 } from "./movement/exercises";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
   Volume2,
@@ -33,7 +33,7 @@ import {
   useSession,
   type Settings as Config,
 } from "./game/session";
-import { useTracking } from "./movement/useTracking";
+import { requestCameraStream, useTracking } from "./movement/useTracking";
 import { audio } from "./audio/sound";
 import {
   Portrait,
@@ -45,6 +45,8 @@ import { Setup } from "./components/Setup";
 import { GameGlyph } from "./components/GameTabs";
 import { CarePlanSetup } from "./components/CarePlanSetup";
 import { ProgressReport } from "./components/ProgressReport";
+import { DemoVideoSetup } from "./components/DemoVideoSetup";
+import { clipStream, findClip } from "./demo/demoClips";
 import {
   CARE_PLANS,
   dayKey,
@@ -84,6 +86,26 @@ function Cheer({ count, streak }: { count: number; streak: number }) {
       <strong>{CHEERS[shown % CHEERS.length]}</strong>
       {streak >= 3 && <span>{streak} in a row ✦</span>}
     </div>
+  );
+}
+/** Rehabbit's mark: an original little bunny with one ear bent mid-stretch. */
+function BunnyMark() {
+  return (
+    <svg viewBox="0 0 48 52" aria-hidden="true">
+      <path d="M15 22C11 12 11 4 15 2c4-1 6 8 6 18" fill="#f3e6d3" stroke="#2a5949" strokeWidth="2" />
+      <path d="M17 18c-1-6-1-11 0-12" stroke="#e9a7a0" strokeWidth="2.2" strokeLinecap="round" />
+      <path d="M27 20c2-9 8-15 13-13 3 2-2 9-7 15" fill="#f3e6d3" stroke="#2a5949" strokeWidth="2" />
+      <path d="M31 17c2-4 5-7 7-8" stroke="#e9a7a0" strokeWidth="2.2" strokeLinecap="round" />
+      <ellipse cx="24" cy="34" rx="16" ry="14" fill="#f8efe2" stroke="#2a5949" strokeWidth="2" />
+      <circle cx="18" cy="32" r="2.2" fill="#24483e" />
+      <circle cx="30" cy="32" r="2.2" fill="#24483e" />
+      <circle cx="18.7" cy="31.2" r="0.7" fill="#fff" />
+      <circle cx="30.7" cy="31.2" r="0.7" fill="#fff" />
+      <path d="M22 37.5h4l-2 2z" fill="#e58f86" />
+      <path d="M24 39.5c-1 2-3 2.4-4.4 1.6M24 39.5c1 2 3 2.4 4.4 1.6" stroke="#2a5949" strokeWidth="1.4" fill="none" strokeLinecap="round" />
+      <ellipse cx="13.5" cy="38" rx="3" ry="1.8" fill="#f2b8aa" opacity=".7" />
+      <ellipse cx="34.5" cy="38" rx="3" ry="1.8" fill="#f2b8aa" opacity=".7" />
+    </svg>
   );
 }
 /** Today's prescribed games on the start screen, with reps done so far. */
@@ -148,9 +170,20 @@ export default function App() {
     [history, setHistory] = useState<SessionRecord[]>(loadHistory),
     [showPlan, setShowPlan] = useState(false),
     [showReport, setShowReport] = useState(false);
+  const [showDemoVideo, setShowDemoVideo] = useState(false),
+    [playingClip, setPlayingClip] = useState(false);
+  // Presentation mode: the tracker reads a recorded clip instead of the camera.
+  const demoSource = useRef({ enabled: settings.demoVideo, exercise: settings.exercise });
+  demoSource.current = { enabled: settings.demoVideo, exercise: settings.exercise };
+  const requestStream = useCallback(async () => {
+    const d = demoSource.current;
+    const clip = d.enabled ? await findClip(d.exercise) : null;
+    setPlayingClip(!!clip);
+    return clip ? clipStream(clip) : requestCameraStream();
+  }, []);
   const tracking = useTracking(
       settings.arm,
-      undefined,
+      requestStream,
       settings.exercise,
       settings.personalization,
     ),
@@ -165,12 +198,14 @@ export default function App() {
     if (summary.cycles === 0 && summary.seconds < 5) return;
     const record = toRecord(summary);
     if (!record) return;
+    // Sessions played from a recorded clip are marked as example data.
+    if (playingClip && summary.mode === "camera") record.example = true;
     setHistory((h) => {
       const next = [...h, record];
       saveHistory(next);
       return next;
     });
-  }, [session.summary, plan, settings.saveSummaries]);
+  }, [session.summary, plan, settings.saveSummaries, playingClip]);
   useEffect(() => {
     // Daily reps from the plan become the game's goal.
     const item = plan?.items.find((i) => i.exercise === settings.exercise);
@@ -230,6 +265,7 @@ export default function App() {
     showDetails ||
     showPlan ||
     showReport ||
+    showDemoVideo ||
     session.phase === "setup" ||
     session.phase === "calibration" ||
     session.phase === "paused" ||
@@ -274,7 +310,16 @@ export default function App() {
       document.removeEventListener("keydown", trap);
       previous?.focus();
     };
-  }, [anyModal, showSettings, showDetails, switchTarget, showLesson, showPlan, showReport]);
+  }, [
+    anyModal,
+    showSettings,
+    showDetails,
+    switchTarget,
+    showLesson,
+    showPlan,
+    showReport,
+    showDemoVideo,
+  ]);
   const startDemo = () => {
     setSettings((s) => ({ ...s, personalization: null }));
     tracking.stop();
@@ -376,16 +421,21 @@ export default function App() {
       className={settings.reducedMotion ? "app reduced-motion" : "app"}
       ref={modalRef}
     >
+      {playingClip && tracking.status === "on" && (
+        <div className="demo-video-banner" role="status">
+          ▶ Recorded demo video · real tracking, not a live camera
+        </div>
+      )}
       <header className="header">
-        <button className="brand" onClick={home} aria-label="Luma home">
+        <button className="brand" onClick={home} aria-label="Rehabbit home">
           <span className="brand-mark">
-            <Portrait />
+            <BunnyMark />
           </span>
           <span>
             <strong>
-              luma<span className="brand-spark">✧</span>
+              rehabbit<span className="brand-spark">✧</span>
             </strong>
-            <small>& THE FIREFLY FOREST</small>
+            <small>PHYSIO GAMES THAT HOP ALONG WITH YOU</small>
           </span>
         </button>
         <div className="header-actions">
@@ -788,6 +838,11 @@ export default function App() {
                 exercise={settings.exercise}
                 range={getMovementRange(settings)}
                 reduced={settings.reducedMotion}
+                sourceLabel={
+                  playingClip && tracking.status === "on"
+                    ? "Recorded demo video"
+                    : undefined
+                }
                 session={session}
                 tracking={tracking}
                 arm={settings.arm}
@@ -1135,6 +1190,11 @@ export default function App() {
             setShowSettings(false);
             setShowDetails(true);
           }}
+          onDemoVideo={() => {
+            setShowSettings(false);
+            tracking.stop();
+            setShowDemoVideo(true);
+          }}
         />
       )}
       {showReport && (
@@ -1171,6 +1231,13 @@ export default function App() {
             setHistory([]);
             saveHistory([]);
           }}
+        />
+      )}
+      {showDemoVideo && (
+        <DemoVideoSetup
+          enabled={settings.demoVideo}
+          onToggle={(on) => setSettings((s) => ({ ...s, demoVideo: on }))}
+          onClose={() => setShowDemoVideo(false)}
         />
       )}
       {showPlan && (

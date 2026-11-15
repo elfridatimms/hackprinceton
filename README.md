@@ -1,4 +1,8 @@
-# Luma & the Firefly Forest
+# Rehabbit
+
+*Physio games that hop along with you.* Kids do their home exercises by playing; the camera measures the movement on the device, and therapists get a progress report.
+
+Luma the little dragon is the guide inside the games.
 
 A child-friendly, camera-controlled forest with four playable game tabs, original procedural Three.js art, animated movement lessons, and a complete welcome → animation → one practice movement → play → rest → finish flow.
 
@@ -66,6 +70,10 @@ The profile is applied to filtering and game input mapping. It remains in memory
 The start screen then shows today's plan with reps done so far, selects the next unfinished game, and after each game offers **Next in today's plan**. While a plan is active, every session is saved in this browser as numbers only: date, game, mode, reps, active time and a robust movement range (5th–95th percentile of the camera-measured value, so single spikes cannot define it). No video, images or landmarks are stored.
 
 The **progress report** shows, for the last 14 days: days fully done, days with practice, the current streak and active time; a day-by-day consistency strip (icon + label, not colour alone); and per game a range-of-motion line over camera sessions (largest wrist bend, hand-opening span, elbow bend arc or forearm turn arc) with the change since the first session, hover details and a table view. Button play counts toward daily goals but never toward movement range. It can be printed or saved as PDF, or downloaded as CSV. **Load 2 example weeks** adds clearly labelled example data for demonstrations. Plans are examples to be agreed with the child's therapist; the report is a home-practice record, not a clinical assessment.
+
+## Recorded demo videos (presentations)
+
+Grown-up settings → **Recorded demo videos** records a 15-second clip per game from the camera and stores it in this browser (IndexedDB); clips can be previewed, downloaded, deleted, or shipped permanently as `public/demo/<game>.webm|.mp4` (`grip`, `elbow`, `wrist`, `ship`). With **Play games from recorded videos** on, the tracker reads the clip instead of the live camera: the clip is drawn into a canvas and streamed into the same MediaPipe pipeline, so tracking, filtering, practice and games are real. A banner says "Recorded demo video" the whole time, and sessions played from a clip are marked as example data in the progress report. See `PITCH.md` for the presentation plan.
 
 ## Tracking and movement calculation
 
