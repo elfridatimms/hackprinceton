@@ -181,7 +181,7 @@ describe("The calibration screen that previously trapped the user", () => {
     expect(button("Remember this position")).toBeUndefined();
     holdSpot(65);
     expect(reset).not.toHaveBeenCalled();
-    expect(host.textContent).toContain("Two little moves.");
+    expect(host.textContent).toContain("Your turn!");
     frames(150);
     frames(65);
     frames(150);
@@ -210,10 +210,10 @@ describe("The calibration screen that previously trapped the user", () => {
     holdSpot(150);
     frames(150, true, 30);
     expect(host.textContent).toContain("Bend your elbow a little.");
-    expect(host.textContent).not.toContain("Two little moves.");
+    expect(host.textContent).not.toContain("Your turn!");
     expect(reset).not.toHaveBeenCalled();
     holdSpot(65);
-    expect(host.textContent).toContain("Two little moves.");
+    expect(host.textContent).toContain("Your turn!");
   });
   it("resets both endpoint history and capture readiness after an explicit arm switch", () => {
     holdSpot(150);
@@ -240,6 +240,31 @@ describe("The calibration screen that previously trapped the user", () => {
     expect(reset).not.toHaveBeenCalled();
     click("Play with buttons");
     expect(onDemo).toHaveBeenCalledOnce();
+  });
+  it("shows the game response only from fresh camera movement and pauses it on loss", () => {
+    settings = { ...settings, exercise: "grip" };
+    render();
+    frames(1.1, true, 1);
+    expect(
+      host.querySelector(".movement-response")?.getAttribute("data-position"),
+    ).toBe("0.000");
+    frames(1.65, true, 1);
+    expect(
+      Number(
+        host.querySelector(".movement-response")?.getAttribute("data-position"),
+      ),
+    ).toBeCloseTo(0.5);
+    const petals = host
+      .querySelector(".response-petals")
+      ?.getAttribute("style");
+    frames(1.65, false, 1);
+    expect(host.querySelector(".response-petals")?.getAttribute("style")).toBe(
+      petals,
+    );
+    expect(
+      host.querySelector(".movement-response")?.getAttribute("data-position"),
+    ).toBe("waiting");
+    expect(host.querySelector(".response-waiting")).not.toBeNull();
   });
   it("calibrates a softly closed and comfortably open hand without exposing angles to the child", () => {
     settings = { ...settings, exercise: "grip" };

@@ -1,5 +1,5 @@
+import { PlayAlong, PracticeStickers } from "./PlayAlong";
 import { childInstructions } from "../movement/instructions";
-import { ReadInstruction } from "./ReadInstruction";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
@@ -104,90 +104,51 @@ export function PersonalTune({
   return (
     <div className="personal-tune">
       <span className="scan-eyebrow">
-        <Sparkles size={13} /> YOUR MAGIC, MADE PERSONAL
+        <Sparkles size={13} /> {profile ? "Ready to play!" : "Your turn!"}
       </span>
-      <h2 id="setup-title">
-        {profile
-          ? "Just right for you."
-          : "Two little moves. Your kind of magic."}
-      </h2>
+      <h2 id="setup-title">{profile ? "You did it!" : currentInstruction}</h2>
       <p>
         {profile
-          ? "Luma has learned your comfy movement for this adventure."
-          : "Copy the picture. We’ll do it twice together."}
+          ? "Your little adventure is ready."
+          : "Copy the hand. Watch what happens!"}
       </p>
-      <TrackingScan
-        tracking={tracking}
-        exercise={exercise}
-        arm={arm}
-        range={range}
-        compact
-      />
-      {profile ? (
+      <div className="visual-practice">
+        <div>
+          <PlayAlong
+            exercise={exercise}
+            direction={profile ? "high" : direction}
+            position={position}
+          />
+          <PracticeStickers count={profile ? 2 : count} />
+          {!profile && (
+            <div className="copy-step-hint">
+              <span>{Math.min(count, 2)} of 2 little moves</span>
+              <p>
+                {fresh
+                  ? "A little pause. Then the next move."
+                  : tracking.frame.message}
+              </p>
+            </div>
+          )}
+        </div>
+        <div className="practice-camera">
+          <TrackingScan
+            tracking={tracking}
+            exercise={exercise}
+            arm={arm}
+            range={range}
+            compact
+          />
+        </div>
+      </div>
+      {profile && (
         <div className="personal-ready">
           <div className="personal-ready-seal">
             <Check size={26} />
           </div>
           <div>
             <strong>Your little adventure is ready.</strong>
-            <span>
-              Comfortable range · gentle response · personal steadiness
-            </span>
-          </div>
-          <div className="personal-checks">
-            <span>
-              <Check size={13} /> Your two comfy spots
-            </span>
-            <span>
-              <Check size={13} /> Two real practice movements
-            </span>
-            <span>
-              <Check size={13} /> Smoothing fitted to your scan
-            </span>
-          </div>
-        </div>
-      ) : (
-        <div className="tune-instruction">
-          <MovementGuide
-            key={direction}
-            exercise={exercise}
-            direction={direction}
-            compact
-          />
-          <div>
-            <span className="scan-small-label">
-              {Math.min(count, 2)} OF 2 LITTLE MOVES
-            </span>
-            <h3>{currentInstruction}</h3>
-            <p>
-              {fresh
-                ? "Hold still for a moment. Then follow the next picture."
-                : tracking.frame.message}
-            </p>
-            <ReadInstruction
-              text={`${currentInstruction} ${instruction.tip} Hold still for a moment.`}
-            />
-            <div
-              className="tune-move-track"
-              aria-label="Live position within your comfortable range"
-            >
-              <i
-                style={{
-                  left: `${(position ?? 0.5) * 100}%`,
-                  opacity: fresh ? 1 : 0.25,
-                }}
-              />
-            </div>
-            <div
-              className="tune-count"
-              aria-label={`${Math.min(count, 2)} of 2 movements captured`}
-            >
-              {[0, 1].map((i) => (
-                <span key={i} className={i < count ? "done" : ""}>
-                  {i < count ? <Check size={15} /> : i + 1}
-                </span>
-              ))}
-            </div>
+            <span>Made for your own little moves.</span>
           </div>
         </div>
       )}

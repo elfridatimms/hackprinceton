@@ -7,17 +7,29 @@ export function MovementGuide({
   exercise = "reach",
   direction = "loop",
   compact = false,
+  handOnly = false,
 }: {
   exercise?: Exercise;
   direction?: "loop" | "up" | "down" | "low" | "high";
   compact?: boolean;
+  handOnly?: boolean;
 }) {
   if (exercise === "ship")
-    return <SteeringGuide direction={direction} compact={compact} />;
+    return (
+      <SteeringGuide
+        direction={direction}
+        compact={compact}
+        handOnly={handOnly}
+      />
+    );
   if (exercise === "wrist")
-    return <TiltGuide direction={direction} compact={compact} />;
+    return (
+      <TiltGuide direction={direction} compact={compact} handOnly={handOnly} />
+    );
   if (exercise === "grip")
-    return <GripGuide direction={direction} compact={compact} />;
+    return (
+      <GripGuide direction={direction} compact={compact} handOnly={handOnly} />
+    );
   const moving =
     direction === "loop" || direction === "up" || direction === "down";
   return (

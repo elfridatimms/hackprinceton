@@ -155,6 +155,9 @@ describe("Child-friendly game navigation and lessons", () => {
       expect(html).toContain(exercises[exercise].up);
       expect(html).toContain(exercises[exercise].down);
       expect(html).toContain("My turn!");
+      expect(html).toContain("Watch the hand");
+      expect(html).toContain("An example of what your movement will do.");
+      expect(html).not.toContain("Read instruction aloud");
     },
   );
 });

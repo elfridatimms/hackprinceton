@@ -96,17 +96,17 @@ export function TrackingScan({
     >
       <div className="scan-toolbar">
         <span>
-          <ScanLine size={15} /> MEDIAPIPE · LIVE TRACKING
+          <Sparkles size={15} /> THAT’S YOU!
         </span>
         <span className="scan-state">
           <i />
           {tracking.status === "loading"
-            ? "Loading tracker"
+            ? "Getting ready…"
             : fresh
-              ? "Movement found"
+              ? "I see you!"
               : tracking.status === "off"
                 ? "Camera off"
-                : "Finding your movement"}
+                : "Show your hand"}
         </span>
       </div>
       <div className="scan-window">
@@ -126,51 +126,56 @@ export function TrackingScan({
                 ? "Show your playing hand."
                 : "Let the camera see your body."}
           </span>
-          <b>
-            {visible} <small>landmarks visible</small>
-          </b>
         </div>
       </div>
-      <div className="scan-telemetry">
-        <div>
-          <span className="scan-small-label">
-            <Activity size={12} /> LIVE MOVEMENT
-          </span>
-          <svg
-            viewBox="0 0 240 64"
-            role="img"
-            aria-label="Recent camera movement signal; gaps mean tracking was lost"
-          >
-            <path
-              d="M0 16H240M0 36H240M0 56H240"
-              stroke="#c8d8c8"
-              strokeWidth=".7"
-              strokeDasharray="2 5"
-            />
-            {segments.map((d, i) => (
+      <details className="scan-grownup">
+        <summary>
+          <ScanLine size={12} /> Grown-ups: MediaPipe tracking <span>＋</span>
+        </summary>
+        <div className="scan-landmarks">
+          {visible} landmarks visible · live camera
+        </div>
+        <div className="scan-telemetry">
+          <div>
+            <span className="scan-small-label">
+              <Activity size={12} /> LIVE MOVEMENT
+            </span>
+            <svg
+              viewBox="0 0 240 64"
+              role="img"
+              aria-label="Recent camera movement signal; gaps mean tracking was lost"
+            >
               <path
-                key={i}
-                d={d}
-                stroke="#5f9685"
-                strokeWidth="2.3"
-                fill="none"
-                strokeLinecap="round"
+                d="M0 16H240M0 36H240M0 56H240"
+                stroke="#c8d8c8"
+                strokeWidth=".7"
+                strokeDasharray="2 5"
               />
-            ))}
-          </svg>
+              {segments.map((d, i) => (
+                <path
+                  key={i}
+                  d={d}
+                  stroke="#5f9685"
+                  strokeWidth="2.3"
+                  fill="none"
+                  strokeLinecap="round"
+                />
+              ))}
+            </svg>
+          </div>
+          <div className="scan-engine">
+            <strong>{hand ? "Hand Landmarker" : "Pose Landmarker"}</strong>
+            <span>
+              {fresh ? "Following your movement" : "Waiting for a clear view"}
+            </span>
+            <small>
+              {tracking.diagnostics?.inferenceMs != null
+                ? `${tracking.diagnostics.inferenceMs} ms · on-device`
+                : "On-device processing"}
+            </small>
+          </div>
         </div>
-        <div className="scan-engine">
-          <strong>{hand ? "Hand Landmarker" : "Pose Landmarker"}</strong>
-          <span>
-            {fresh ? "Following your movement" : "Waiting for a clear view"}
-          </span>
-          <small>
-            {tracking.diagnostics?.inferenceMs != null
-              ? `${tracking.diagnostics.inferenceMs} ms · on-device`
-              : "On-device processing"}
-          </small>
-        </div>
-      </div>
+      </details>
       <p className="scan-privacy">
         <ShieldCheck size={12} /> Camera stays here. Nothing is uploaded.
       </p>

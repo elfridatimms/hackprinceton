@@ -1,5 +1,5 @@
+import { PlayAlong } from "./PlayAlong";
 import { childInstructions } from "../movement/instructions";
-import { ReadInstruction } from "./ReadInstruction";
 import { PersonalTune } from "./PersonalTune";
 import { TrackingScan } from "./TrackingScan";
 import type { PersonalProfile } from "../movement/personalization";
@@ -16,7 +16,7 @@ import {
   Hand,
   ChevronDown,
 } from "lucide-react";
-import { validRange } from "../movement/core";
+import { clamp, validRange } from "../movement/core";
 import {
   calibratedRange,
   calibrationEstimate,
@@ -223,6 +223,14 @@ export function Setup({
     now,
     tracking.frame.at,
   ]);
+  const previewRange = getMovementRange(settings);
+  const previewPosition =
+    fresh && value !== null
+      ? clamp(
+          (value - previewRange.lower) /
+            (previewRange.upper - previewRange.lower),
+        )
+      : null;
   const preparing = now < autoReadyAt.current;
   const autoProgress =
     fresh && eligible && !manual && !preparing ? estimate.progress : 0;
@@ -272,7 +280,7 @@ export function Setup({
           </button>
         </div>
         <div className="setup-steps child-steps">
-          {["Watch", "Scan", "Comfy spots", "Your magic"].map((label, i) => (
+          {["Watch", "Say hi!", "Copy me", "Play!"].map((label, i) => (
             <div
               key={label}
               className={i === stage ? "current" : i < stage ? "done" : ""}
@@ -304,24 +312,17 @@ export function Setup({
             <h2 id="setup-title">
               {grip ? "Let’s wake a sleepy flower!" : exercise.title + "!"}
             </h2>
-            <p>{instruction.goal}</p>
-            <ReadInstruction
-              text={`Watch the picture. ${instruction.high} Then, ${instruction.low.toLowerCase()} ${instruction.tip}`}
-            />
-            <div className="flower-mission-badge">
-              <span className="mission-game-icon">
-                <GameGlyph exercise={settings.exercise} />
-              </span>
-              <div>
-                <strong>{exercise.intro}</strong>
-                <small>{exercise.short}</small>
-              </div>
-            </div>
+            <p>Watch first. Then it’s your turn.</p>
             <div className="watch-luma">
               <span className="watch-badge">
                 <Sparkles size={12} /> Watch, then try!
               </span>
-              <MovementGuide exercise={settings.exercise} />
+              <PlayAlong
+                exercise={settings.exercise}
+                direction="loop"
+                position={null}
+                watch
+              />
               <div className="movement-steps">
                 <span>
                   <b>1</b>
@@ -412,9 +413,6 @@ export function Setup({
             </span>
             <h2 id="setup-title">Luma can see your little moves.</h2>
             <p>{instruction.camera}</p>
-            <ReadInstruction
-              text={`${instruction.camera} ${instruction.help}`}
-            />
             <TrackingScan
               tracking={tracking}
               exercise={settings.exercise}
@@ -470,10 +468,12 @@ export function Setup({
               </div>
             </div>
             <p>{instruction.tip}</p>
-            <ReadInstruction
-              text={`${endpoint === "lower" ? instruction.low : instruction.high} ${instruction.tip} Hold still when you get there. Luma will save it for you.`}
-            />
-            <div className="child-calibration-visual">
+            <div className="child-calibration-visual visual-instructions">
+              <PlayAlong
+                exercise={settings.exercise}
+                direction={endpoint === "lower" ? "low" : "high"}
+                position={previewPosition}
+              />
               <div className="calibration-camera">
                 <TrackingScan
                   tracking={tracking}
@@ -481,30 +481,6 @@ export function Setup({
                   arm={settings.arm}
                   compact
                 />
-              </div>
-              <div className="calibration-demonstration">
-                <MovementGuide
-                  exercise={settings.exercise}
-                  direction={endpoint === "lower" ? "low" : "high"}
-                  compact
-                />
-                <span>
-                  {ship
-                    ? endpoint === "lower"
-                      ? "Lean left"
-                      : "Lean right"
-                    : wrist
-                      ? endpoint === "lower"
-                        ? "Rest gently"
-                        : "A little tilt"
-                      : grip
-                        ? endpoint === "lower"
-                          ? "Softly closed"
-                          : "Gently open"
-                        : endpoint === "lower"
-                          ? "A cozy place to start"
-                          : "A little lift is enough"}
-                </span>
               </div>
             </div>
             <div className="spot-progress">

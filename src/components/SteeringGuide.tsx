@@ -1,19 +1,25 @@
 export function SteeringGuide({
   direction = "loop",
   compact = false,
+  handOnly = false,
 }: {
   direction?: "loop" | "up" | "down" | "low" | "high";
   compact?: boolean;
+  handOnly?: boolean;
 }) {
   const left = direction === "low" || direction === "down";
   const right = direction === "high" || direction === "up";
   return (
     <div
-      className={`movement-guide steering-guide ${compact ? "compact" : ""} steering-${direction}`}
+      className={`movement-guide ${handOnly ? "hand-only" : ""} steering-guide ${compact ? "compact" : ""} steering-${direction}`}
       role="img"
       aria-label="An open hand with fingers pointing up gently leans right to sail a pirate ship right, then leans left to sail back."
     >
-      <svg viewBox="0 0 320 232" fill="none" aria-hidden="true">
+      <svg
+        viewBox={handOnly ? "100 25 120 138" : "0 0 320 232"}
+        fill="none"
+        aria-hidden="true"
+      >
         <rect x="18" y="16" width="284" height="200" rx="25" fill="#e5efeb" />
         <path
           d="M33 181q28-10 55 0t55 0 55 0 55 0 33 0v25H33z"

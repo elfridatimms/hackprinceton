@@ -1,4 +1,4 @@
-import { ReadInstruction } from "./ReadInstruction";
+import { PlayAlong } from "./PlayAlong";
 import { childInstructions } from "../movement/instructions";
 import { X, Sparkles, ArrowRight } from "lucide-react";
 import { exercises, type Exercise } from "../movement/exercises";
@@ -40,11 +40,13 @@ export function MovementLesson({
         </div>
         <h2 id="lesson-title">{game.title}</h2>
         <p>Watch the picture. Then copy the move.</p>
-        <ReadInstruction
-          text={`${game.up} Then, ${game.down.toLowerCase()} ${instruction.tip}`}
-        />
         <div className="lesson-example">
-          <MovementGuide exercise={exercise} />
+          <PlayAlong
+            exercise={exercise}
+            direction="loop"
+            position={null}
+            watch
+          />
         </div>
         <ol className="lesson-steps">
           <li>

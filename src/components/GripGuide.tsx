@@ -2,18 +2,24 @@ import { Portrait } from "./Illustrations";
 export function GripGuide({
   direction = "loop",
   compact = false,
+  handOnly = false,
 }: {
   direction?: "loop" | "up" | "down" | "low" | "high";
   compact?: boolean;
+  handOnly?: boolean;
 }) {
   const animated = ["loop", "up", "down"].includes(direction);
   return (
     <div
-      className={`movement-guide grip-guide ${compact ? "compact" : ""} ${animated ? "grip-moving" : ""} grip-${direction}`}
+      className={`movement-guide ${handOnly ? "hand-only" : ""} grip-guide ${compact ? "compact" : ""} ${animated ? "grip-moving" : ""} grip-${direction}`}
       role="img"
       aria-label="A hand opens its fingers to wake a sleepy flower, then closes softly into a loose fist."
     >
-      <svg viewBox="0 0 320 232" fill="none" aria-hidden="true">
+      <svg
+        viewBox={handOnly ? "35 30 150 190" : "0 0 320 232"}
+        fill="none"
+        aria-hidden="true"
+      >
         <ellipse cx="144" cy="214" rx="113" ry="9" fill="#dce7d1" />
         <path d="M101 203v-45h39v45" fill="#f2bf98" />
         <path d="M99 185h44v23H99z" fill="#a9bfc3" />
@@ -151,6 +157,7 @@ export function GripGuide({
         </g>
         <path
           d="M178 111q14-11 30-4m-7-6 8 5-7 7"
+          style={{ display: handOnly ? "none" : undefined }}
           stroke="#bbcaa1"
           strokeWidth="2"
           strokeLinecap="round"

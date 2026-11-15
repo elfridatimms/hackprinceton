@@ -1,17 +1,23 @@
 export function TiltGuide({
   direction = "loop",
   compact = false,
+  handOnly = false,
 }: {
   direction?: "loop" | "up" | "down" | "low" | "high";
   compact?: boolean;
+  handOnly?: boolean;
 }) {
   return (
     <div
-      className={`movement-guide tilt-guide ${compact ? "compact" : ""} tilt-${direction}`}
+      className={`movement-guide ${handOnly ? "hand-only" : ""} tilt-guide ${compact ? "compact" : ""} tilt-${direction}`}
       role="img"
       aria-label="A supported hand gently tilts upward to lift a butterfly, then returns to its comfortable resting position."
     >
-      <svg viewBox="0 0 320 232" fill="none" aria-hidden="true">
+      <svg
+        viewBox={handOnly ? "30 105 185 90" : "0 0 320 232"}
+        fill="none"
+        aria-hidden="true"
+      >
         <ellipse cx="153" cy="210" rx="115" ry="9" fill="#dbe6d1" />
         <rect x="34" y="159" width="168" height="27" rx="13" fill="#c4d4bb" />
         <path d="M35 142h95v27H35" fill="#efbc96" />
