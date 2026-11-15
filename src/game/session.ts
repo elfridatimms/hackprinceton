@@ -22,6 +22,10 @@ export type Phase =
   | "paused"
   | "completed";
 export type Mode = "demo" | "camera";
+/** Fraction trimmed from each end of the grip range so smaller hand movements count. */
+export const GRIP_INSET = 0.12;
+/** Game characters ignore input changes smaller than this (residual tracking wobble). */
+export const GAME_DEADBAND = 0.012;
 export type Settings = {
   exercise: Exercise;
   personalization: PersonalProfile | null;
@@ -96,7 +100,11 @@ export function loadSettings(): Settings {
       ...(stored.inputVersion >= 3
         ? {}
         : { reachLower: -0.5, reachUpper: 0.5 }),
+      // Butterfly now measures bend away from a straight hand (0–90°).
+      ...(stored.inputVersion >= 4 ? {} : { tiltLower: 0, tiltUpper: 40 }),
       personalization: null,
+      // Firefly Trail was retired; old saved choices open Sleepy Flowers.
+      ...(stored.exercise === "reach" ? { exercise: "grip" as const } : {}),
     };
   } catch {
     return defaultSettings;
@@ -104,6 +112,16 @@ export function loadSettings(): Settings {
 }
 export type WorldState = {
   bumpAt?: number;
+  /** Next target in normalized input units, set by the active game. */
+  goal?: number | null;
+  /** Hold-at-target progress 0..1 for the active target. */
+  dwell?: number;
+  /** Completed movement cycles, for in-world rewards. */
+  cycles?: number;
+  /** Flowers sown and grown in Sleepy Flowers. */
+  planted?: number;
+  /** Consecutive collections without an obstacle touch. */
+  streak?: number;
   reachTravel?: number;
   exercise?: Exercise;
   celebrating: boolean;
@@ -191,6 +209,10 @@ export function useSession(
     world.current.collectAt = -100;
     world.current.bumpAt = -100;
     world.current.fireflies = 0;
+    world.current.goal = null;
+    world.current.dwell = 0;
+    world.current.cycles = 0;
+    world.current.streak = 0;
     setCycles(0);
     setSeconds(0);
     setFireflies(0);
@@ -236,6 +258,7 @@ export function useSession(
     collected.current++;
     world.current.collectAt = performance.now() / 1000;
     world.current.fireflies = collected.current;
+    world.current.streak = (world.current.streak ?? 0) + 1;
     setFireflies(collected.current);
     audio.chime(collected.current);
   }, []);
@@ -325,12 +348,15 @@ export function useSession(
             c.settings.exercise === "grip" &&
             c.frame.openness !== null &&
             c.frame.openness !== undefined
-          )
+          ) {
+            // A little more sensitive: a slightly smaller open/close reaches the ends.
+            const inset = (c.settings.gripUpper - c.settings.gripLower) * GRIP_INSET;
             control.current = normalizeReach(
               c.frame.openness,
-              c.settings.gripLower,
-              c.settings.gripUpper,
+              c.settings.gripLower + inset,
+              c.settings.gripUpper - inset,
             );
+          }
           else if (
             c.settings.exercise === "reach" &&
             c.frame.height !== null &&
@@ -363,7 +389,10 @@ export function useSession(
         world.current.position =
           c.settings.exercise === "reach"
             ? steadyFireflyPosition(old, control.current, dt)
-            : smooth(old, control.current, dt, c.settings.smoothing);
+            : c.mode === "camera" &&
+                Math.abs(control.current - old) < GAME_DEADBAND
+              ? old
+              : smooth(old, control.current, dt, c.settings.smoothing);
       world.current.velocity = smooth(
         world.current.velocity,
         (world.current.position - old) / Math.max(dt, 0.001),
@@ -377,10 +406,20 @@ export function useSession(
           active.current += dt;
           if (counter.current.update(world.current.position, now, true)) {
             setCycles(counter.current.count);
+            world.current.cycles = counter.current.count;
+            if (c.settings.exercise === "grip") audio.chime(counter.current.count);
             if (counter.current.count >= c.settings.target) {
               world.current.progress = 1;
               finish(true);
             }
+          }
+          if (c.settings.exercise === "grip") {
+            world.current.goal =
+              counter.current.phase === "seek-high" ? 0.9 : 0.1;
+            world.current.dwell =
+              counter.current.dwellAt === null
+                ? 0
+                : Math.min(1, (now - counter.current.dwellAt) / 220);
           }
           const sub =
             counter.current.phase === "return-low"

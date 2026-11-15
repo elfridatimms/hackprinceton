@@ -58,7 +58,7 @@ export const exercises = {
     up: childInstructions.wrist.high,
     down: childInstructions.wrist.low,
     camera:
-      "Show one hand from a slight side view, with your fingers pointing across the picture. Keep your wrist and knuckles visible.",
+      "Show your hand from the side, little finger toward the camera and thumb away from it. Your forearm can rest on a table or point up in the air. Keep your elbow, wrist and knuckles in the picture. Hold your hand straight, in line with your forearm, then bend only at the wrist.",
   },
   ship: {
     tab: "Pirate Ship",
@@ -254,48 +254,79 @@ export function forearmSteering(
   const angle = (Math.atan2(x, y) * 180) / Math.PI;
   return Math.abs(angle) <= 75 ? angle : null;
 }
-/** Signed hand bend relative to the visible forearm. Moving the whole arm does not bend the wrist. */
+const inPicture = (p: Landmark | undefined): p is Landmark =>
+  !!p &&
+  Number.isFinite(p.x) &&
+  Number.isFinite(p.y) &&
+  p.x >= 0 &&
+  p.x <= 1 &&
+  p.y >= 0 &&
+  p.y <= 1;
+/** Elbow, wrist and the hand's knuckle centre (mean of the four finger knuckles). */
+function wristGeometry(
+  pose: Landmark[],
+  hand: Landmark[],
+  arm: Arm,
+  aspect: number,
+) {
+  const elbow = pose[arm === "left" ? 13 : 14],
+    w = hand[0];
+  if (
+    !usableLandmark(elbow) ||
+    !inPicture(w) ||
+    !Number.isFinite(aspect) ||
+    aspect <= 0
+  )
+    return null;
+  const knuckles = [5, 9, 13, 17].map((i) => hand[i]).filter(inPicture);
+  if (knuckles.length < 2) return null;
+  const k = {
+    x: knuckles.reduce((s, p) => s + p.x, 0) / knuckles.length,
+    y: knuckles.reduce((s, p) => s + p.y, 0) / knuckles.length,
+  };
+  const fx = (w.x - elbow.x) * aspect,
+    fy = w.y - elbow.y,
+    hx = (k.x - w.x) * aspect,
+    hy = k.y - w.y;
+  const fl = Math.hypot(fx, fy),
+    hl = Math.hypot(hx, hy);
+  // Forearm must be visible; a hand pointing straight at the camera has no readable bend.
+  if (fl < 0.06 || hl < 0.012 || hl < fl * 0.08) return null;
+  return { elbow, wrist: w, knuckle: k, fx, fy, hx, hy };
+}
+/**
+ * Signed bend of the hand against the forearm line, in degrees, in the
+ * picture plane. 0° means "level": the hand continues the forearm in a
+ * straight line. Works with the forearm resting sideways or raised in the
+ * air, as long as the hand is seen from its side (little finger toward the camera).
+ */
+export function wristBendSigned(
+  pose: Landmark[],
+  hand: Landmark[],
+  arm: Arm,
+  aspect: number,
+): number | null {
+  const g = wristGeometry(pose, hand, arm, aspect);
+  if (!g) return null;
+  const angle =
+    (Math.atan2(g.fx * g.hy - g.fy * g.hx, g.fx * g.hx + g.fy * g.hy) * 180) /
+    Math.PI;
+  return Math.abs(angle) <= 90 ? angle : null;
+}
+/** Butterfly input: how far the hand bends away from level, either way, 0–90°.
+ * Moving or raising the whole arm does not change it; only the wrist bend does. */
 export function wristBend(
   pose: Landmark[],
   hand: Landmark[],
   arm: Arm,
   aspect: number,
 ): number | null {
-  const elbow = pose[arm === "left" ? 13 : 14],
-    w = hand[0],
-    m = hand[9];
-  if (
-    !usableLandmark(elbow) ||
-    !w ||
-    !m ||
-    !Number.isFinite(aspect) ||
-    aspect <= 0 ||
-    ![w, m].every(
-      (p) =>
-        Number.isFinite(p.x) &&
-        Number.isFinite(p.y) &&
-        p.x >= 0 &&
-        p.x <= 1 &&
-        p.y >= 0 &&
-        p.y <= 1,
-    )
-  )
-    return null;
-  const fx = (w.x - elbow.x) * aspect,
-    fy = w.y - elbow.y,
-    hx = (m.x - w.x) * aspect,
-    hy = m.y - w.y;
-  const fl = Math.hypot(fx, fy),
-    hl = Math.hypot(hx, hy);
-  if (fl < 0.06 || hl < 0.025 || Math.abs(fx) < fl * 0.25) return null;
-  const angle =
-    (-Math.sign(fx) * Math.atan2(fx * hy - fy * hx, fx * hx + fy * hy) * 180) /
-    Math.PI;
-  return angle >= -75 && angle <= 90 ? angle : null;
+  const angle = wristBendSigned(pose, hand, arm, aspect);
+  return angle === null ? null : Math.abs(angle);
 }
+/** Games offered to players. The reach (Firefly Trail) game was retired. */
 export const exerciseOrder: Exercise[] = [
   "grip",
-  "reach",
   "elbow",
   "wrist",
   "ship",

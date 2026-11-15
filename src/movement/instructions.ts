@@ -26,11 +26,11 @@ export const childInstructions = {
     goal: "Let’s help Luma fly!",
   },
   wrist: {
-    low: "Rest your hand.",
-    high: "Tilt your hand up a little.",
-    camera: "Rest your forearm. Point your fingers sideways.",
-    help: "Show your elbow, wrist and knuckles from the side. Keep your forearm still.",
-    tip: "A tiny tilt is enough.",
+    low: "Make your hand straight.",
+    high: "Bend your hand at the wrist.",
+    camera: "Show your hand from the side, little finger to the camera.",
+    help: "Your arm can rest on the table or point up in the air. Keep your elbow still. A straight hand is the start; bend only at the wrist.",
+    tip: "A small bend is enough.",
     goal: "Let’s help a butterfly!",
   },
   ship: {

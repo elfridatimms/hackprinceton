@@ -2,6 +2,10 @@ import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import type { WorldState } from "./session";
+import { Burst, DwellRing, GuidePath, Trail } from "./Effects";
+
+const nectarSpot = (p: number) => new THREE.Vector3(-3 + p * 6, 0.3 + p * 2.8, 3.6);
+const NECTAR = [0.15, 0.85];
 export function GameWorldObjects({
   world,
   welcome,
@@ -14,10 +18,10 @@ export function GameWorldObjects({
   const butterfly = useRef<THREE.Group>(null),
     left = useRef<THREE.Group>(null),
     right = useRef<THREE.Group>(null),
-    jar = useRef<THREE.Group>(null),
-    jarLights = useRef<THREE.Group>(null),
     flowers = useRef<THREE.Group>(null);
   const nectar = useRef({ target: 0, dwell: 0 });
+  const visited = useRef(new THREE.Vector3()),
+    visits = useRef(0);
   const antenna = useMemo(
     () =>
       new THREE.CatmullRomCurve3([
@@ -31,7 +35,6 @@ export function GameWorldObjects({
     const w = world.current,
       t = clock.elapsedTime;
     butterfly.current!.visible = w.exercise === "wrist";
-    jar.current!.visible = w.exercise === "reach";
     flowers.current!.visible = w.exercise === "wrist";
     if (w.phase === "welcome" || w.phase === "practice") {
       nectar.current.target = 0;
@@ -45,11 +48,17 @@ export function GameWorldObjects({
     ) {
       nectar.current.dwell += Math.min(dt, 0.06);
       if (nectar.current.dwell > 0.3) {
+        visited.current.copy(nectarSpot(NECTAR[nectar.current.target]));
+        visits.current++;
         onCollect();
         nectar.current.target = 1 - nectar.current.target;
         nectar.current.dwell = 0;
       }
     } else nectar.current.dwell = 0;
+    if (w.exercise === "wrist") {
+      w.goal = NECTAR[nectar.current.target];
+      w.dwell = Math.min(1, nectar.current.dwell / 0.3);
+    }
     flowers.current!.children.forEach((f, i) => {
       f.scale.setScalar(
         i === nectar.current.target
@@ -67,23 +76,47 @@ export function GameWorldObjects({
       10,
       dt,
     );
-    butterfly.current!.rotation.z = w.reduced ? 0 : Math.sin(t * 0.8) * 0.06;
+    butterfly.current!.rotation.z = THREE.MathUtils.damp(
+      butterfly.current!.rotation.z,
+      (w.reduced ? 0 : Math.sin(t * 0.8) * 0.06) -
+        (welcome ? 0 : Math.max(-0.35, Math.min(0.35, w.velocity * 0.25))),
+      6,
+      dt,
+    );
     butterfly.current!.position.x = w.celebrating
       ? 4 + Math.sin(t * 0.7)
       : welcome
         ? 5.3
         : -3 + p * 6;
-    jarLights.current!.children.forEach((child, i) => {
-      child.visible = i < Math.min(12, w.fireflies);
-      child.position.set(
-        Math.sin(i * 2.4 + t * 0.3) * 0.34,
-        0.4 + (i % 5) * 0.18 + Math.sin(t + i) * 0.04,
-        Math.cos(i * 2.4 + t * 0.3) * 0.3,
-      );
-    });
   });
+  const playing = () =>
+    world.current.exercise === "wrist" && world.current.phase === "playing" && !welcome;
+  const goalAt = () => (playing() ? nectarSpot(NECTAR[nectar.current.target]) : null);
+  const flyer = new THREE.Vector3();
+  const butterflyAt = () =>
+    playing() && butterfly.current
+      ? flyer.copy(butterfly.current.position).add(new THREE.Vector3(0, -0.05, -0.3))
+      : null;
   return (
     <>
+      <DwellRing
+        world={world}
+        radius={0.82}
+        color="#c6f59a"
+        get={() => {
+          const at = goalAt();
+          return at ? { at, dwell: nectar.current.dwell / 0.3 } : null;
+        }}
+      />
+      <GuidePath world={world} from={butterflyAt} to={goalAt} color="#f4e2ff" />
+      <Trail world={world} get={butterflyAt} color="#e6d8ff" count={20} size={0.08} />
+      <Burst
+        world={world}
+        trigger={() => visits.current}
+        at={() => visited.current}
+        colors={["#ecc3d0", "#f1d2a0", "#d9c8ff", "#fff3c0"]}
+        count={24}
+      />
       <group ref={flowers}>
         {[0.15, 0.85].map((p, i) => (
           <group key={i} position={[-3 + p * 6, 0.3 + p * 2.8, 3.6]}>
@@ -193,45 +226,6 @@ export function GameWorldObjects({
             </mesh>
           </group>
         ))}
-      </group>
-      <group ref={jar} position={[welcome ? 6 : 1.7, -1.8, 3.5]}>
-        <mesh position={[0, 0.88, 0]}>
-          <cylinderGeometry args={[0.55, 0.62, 1.55, 32]} />
-          <meshStandardMaterial
-            color="#d3e5d0"
-            transparent
-            opacity={0.24}
-            roughness={0.28}
-            depthWrite={false}
-          />
-        </mesh>
-        <mesh position={[0, 0.12, 0]}>
-          <cylinderGeometry args={[0.6, 0.61, 0.13, 32]} />
-          <meshStandardMaterial color="#9aab79" />
-        </mesh>
-        <mesh position={[0, 1.69, 0]} rotation={[Math.PI / 2, 0, 0]}>
-          <torusGeometry args={[0.54, 0.06, 10, 32]} />
-          <meshStandardMaterial color="#c8b778" />
-        </mesh>
-        <group ref={jarLights}>
-          {Array.from({ length: 12 }, (_, i) => (
-            <group key={i}>
-              <mesh>
-                <sphereGeometry args={[0.045, 10, 8]} />
-                <meshBasicMaterial color="#ffe197" />
-              </mesh>
-              <mesh>
-                <sphereGeometry args={[0.11, 12, 10]} />
-                <meshBasicMaterial
-                  color="#ffdb83"
-                  transparent
-                  opacity={0.2}
-                  depthWrite={false}
-                />
-              </mesh>
-            </group>
-          ))}
-        </group>
       </group>
     </>
   );

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { PersonalProfile } from "./personalization";
 import { ReachStability } from "./reach";
-import { MovementFilter } from "./filter";
+import { AnchorLock, LandmarkSmoother, MovementFilter } from "./filter";
 import {
   createVisionEngine,
   PlayingHand,
@@ -16,7 +16,13 @@ import {
   forearmSteering,
   type Exercise,
 } from "./exercises";
-import { elbowAngle, type Arm, type TrackingFrame } from "./core";
+import {
+  elbowAngle,
+  usableLandmark,
+  type Arm,
+  type Landmark,
+  type TrackingFrame,
+} from "./core";
 import { FRAME_MAX_AGE_MS } from "./calibration";
 const EMPTY: TrackingFrame = {
   valid: false,
@@ -78,6 +84,17 @@ export function useTracking(
     missingSince = useRef<number | null>(null);
   const filter = useRef(new MovementFilter());
   const reachStability = useRef(new ReachStability());
+  // Landmark-level smoothing and pinned pivot joints keep both the drawn
+  // skeleton and the measured value steady without hiding real movement.
+  // Lower cutoffs = calmer when still; beta keeps real movement responsive.
+  const poseSmoother = useRef(new LandmarkSmoother(0.6, 4.5));
+  const handSmoother = useRef(new LandmarkSmoother(0.8, 5.5));
+  const anchors = useRef(new Map<number, AnchorLock>());
+  const resetSmoothing = () => {
+    poseSmoother.current.reset();
+    handSmoother.current.reset();
+    anchors.current.clear();
+  };
   useEffect(() => {
     // Filter both preview/practice and play; raw pose used to be unfiltered before calibration.
     const p =
@@ -94,11 +111,13 @@ export function useTracking(
     );
     filter.current.reset();
     reachStability.current.reset();
+    resetSmoothing();
     setFrame(EMPTY);
   }, [profile, exercise, arm]);
   useEffect(() => {
     activeArm.current = null;
     reachStability.current.reset();
+    resetSmoothing();
     setFrame({
       ...EMPTY,
       message:
@@ -128,6 +147,7 @@ export function useTracking(
     missingSince.current = null;
     filter.current.reset();
     reachStability.current.reset();
+    resetSmoothing();
     diagnostics.current.stage = "Camera off";
     setFrame(EMPTY);
     setStatus("off");
@@ -219,7 +239,8 @@ export function useTracking(
             lastMeasurementAt = at;
             diagnostics.current.inferenceMs = Math.round(inferenceMs);
             diagnostics.current.frames++;
-            const pose = observation.pose;
+            const aspect = el.videoWidth / el.videoHeight;
+            const pose = poseSmoother.current.update(observation.pose, at);
             if (!activeArm.current)
               activeArm.current =
                 activeExercise === "reach"
@@ -230,11 +251,41 @@ export function useTracking(
             const hand = handMode
               ? playingHand.current.select(observation.hands)
               : observation.hands.find((h) => h.label.toLowerCase() === side);
+            const handPoints = handSmoother.current.update(
+              hand?.points ?? [],
+              at,
+            );
+            // Pin the pivot joint(s) of this exercise to a steady reference point.
+            const elbowId = side === "left" ? 13 : 14,
+              shoulderId = side === "left" ? 11 : 12;
+            const pivotIds =
+              activeExercise === "elbow"
+                ? [shoulderId, elbowId]
+                : handMode
+                  ? []
+                  : [elbowId];
+            for (const id of pivotIds) {
+              if (!usableLandmark(pose[id])) continue;
+              let lock = anchors.current.get(id);
+              if (!lock) {
+                lock = new AnchorLock(0.024);
+                anchors.current.set(id, lock);
+              }
+              pose[id] = lock.update(pose[id], at, aspect)!;
+            }
+            let anchor: Landmark | null = null;
+            if (handMode) {
+              let lock = anchors.current.get(-1);
+              if (!lock) {
+                lock = new AnchorLock(0.03);
+                anchors.current.set(-1, lock);
+              }
+              anchor = handPoints[0]
+                ? (lock.update(handPoints[0], at, aspect) ?? null)
+                : null;
+            } else if (usableLandmark(pose[elbowId])) anchor = pose[elbowId];
             const points =
-              handMode || activeExercise === "wrist"
-                ? (hand?.points ?? [])
-                : pose;
-            const aspect = el.videoWidth / el.videoHeight;
+              handMode || activeExercise === "wrist" ? handPoints : pose;
             const rawValue =
               activeExercise === "grip"
                 ? handOpenness(points, aspect)
@@ -267,7 +318,7 @@ export function useTracking(
               : activeExercise === "reach"
                 ? reachTrackingMessage(pose, side)
                 : activeExercise === "wrist"
-                  ? "Show your hand and elbow from the side. Rest your forearm."
+                  ? "Show your elbow and your hand from the side, little finger to the camera."
                   : activeExercise === "ship"
                     ? "Keep your elbow and hand in view. Fingers can stay relaxed."
                     : "Keep your shoulder, elbow and hand in view.";
@@ -279,6 +330,7 @@ export function useTracking(
               at: started,
               points,
               posePoints: pose,
+              anchor,
               arm: side,
               pointsValid: timely && points.length > 0,
               rawValue: timely ? rawValue : null,

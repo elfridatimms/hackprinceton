@@ -14,6 +14,7 @@ import {
   isHandExercise,
   exercises,
   type Exercise,
+  getMovementRange,
 } from "../src/movement/exercises";
 let recordedTilt = 0,
   targetTilt = 0;
@@ -274,6 +275,13 @@ function Check() {
           arm={settings.arm}
           sourceLabel="Recorded test source"
           exercise={settings.exercise}
+          guide={() => ({
+            // Static example guide so the overlay's ghost, gauge and anchor are visible.
+            value: 0.45,
+            goal: 0.9,
+            dwell: 0.5,
+            range: getMovementRange(settings),
+          })}
         />
       </div>
       <pre id="diagnostic" style={{ whiteSpace: "pre-wrap" }}>

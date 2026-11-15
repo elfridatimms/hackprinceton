@@ -2,7 +2,11 @@ import { Helm } from "./components/Helm";
 import { MotionPreview } from "./components/MotionPreview";
 import { GameTabs } from "./components/GameTabs";
 import { MovementLesson } from "./components/MovementLesson";
-import { exercises, type Exercise } from "./movement/exercises";
+import {
+  exercises,
+  getMovementRange,
+  type Exercise,
+} from "./movement/exercises";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
@@ -42,6 +46,33 @@ import {
 import { InputPanel } from "./components/CameraPanel";
 import { Settings, SessionDetails, formatTime } from "./components/Settings";
 import { Setup } from "./components/Setup";
+const CHEERS = [
+  "Yay!",
+  "Sparkly!",
+  "Wonderful!",
+  "So gentle!",
+  "You did it!",
+  "Shine on!",
+  "Lovely!",
+];
+/** A short, friendly word that pops up after every real success. */
+function Cheer({ count, streak }: { count: number; streak: number }) {
+  const [shown, setShown] = useState<number | null>(null);
+  const first = useRef(count);
+  useEffect(() => {
+    if (count === first.current || count === 0) return;
+    setShown(count);
+    const id = setTimeout(() => setShown(null), 1400);
+    return () => clearTimeout(id);
+  }, [count]);
+  if (shown === null) return null;
+  return (
+    <div className="cheer-pop" key={shown} aria-live="polite">
+      <strong>{CHEERS[shown % CHEERS.length]}</strong>
+      {streak >= 3 && <span>{streak} in a row ✦</span>}
+    </div>
+  );
+}
 export default function App() {
   const [settings, setSettings] = useState<Config>(loadSettings),
     [showSettings, setShowSettings] = useState(false),
@@ -68,7 +99,7 @@ export default function App() {
       const { personalization: _sessionOnly, ...preferences } = settings;
       localStorage.setItem(
         "luma-settings",
-        JSON.stringify({ ...preferences, inputVersion: 3 }),
+        JSON.stringify({ ...preferences, inputVersion: 4 }),
       );
     } catch {}
     audio.mute(settings.muted);
@@ -527,9 +558,15 @@ export default function App() {
                 </div>
                 <div className="firefly-score">
                   <Sparkles size={18} />
-                  <strong key={session.fireflies}>{session.fireflies}</strong>
+                  <strong key={session.fireflies}>
+                    {settings.exercise === "grip"
+                      ? (session.world.current.planted ?? 0)
+                      : session.fireflies}
+                  </strong>
                   <span>
-                    {settings.exercise === "elbow"
+                    {settings.exercise === "grip"
+                      ? "flowers sown"
+                      : settings.exercise === "elbow"
                       ? "sky gates"
                       : settings.exercise === "wrist"
                         ? "flower visits"
@@ -538,6 +575,10 @@ export default function App() {
                           : "little lights"}
                   </span>
                 </div>
+                <Cheer
+                  count={session.fireflies + session.cycles}
+                  streak={session.world.current.streak ?? 0}
+                />
                 {settings.exercise === "ship" && (
                   <Helm
                     position={session.position}
@@ -566,7 +607,7 @@ export default function App() {
                       {settings.exercise === "elbow"
                         ? "Bend to rise. Lower to glide."
                         : settings.exercise === "wrist"
-                          ? "Tilt your hand. Flutter between flowers."
+                          ? "Straight hand = start. Bend at the wrist to fly."
                           : "Rest your elbow. Lift the same hand."}
                     </small>
                   </div>
@@ -580,7 +621,7 @@ export default function App() {
                     <strong>
                       {session.cycles} / {settings.target} little voyages
                     </strong>
-                    <small>Sail to a glowing ring. Then sail back.</small>
+                    <small>Steer under the light. Catch the treasure!</small>
                   </div>
                 )}
                 {settings.exercise === "grip" && (
@@ -605,8 +646,12 @@ export default function App() {
                       )}
                     </div>
                     <small>
-                      {session.cycles} / {settings.target} little blooms
+                      {session.cycles} / {settings.target} little blooms ·{" "}
+                      {session.world.current.planted ?? 0} sown
                     </small>
+                    <em className="patch-hint">
+                      Close to gather seeds ✦ open to sow them!
+                    </em>
                   </div>
                 )}
                 {session.waiting && session.phase !== "paused" && (
@@ -626,7 +671,7 @@ export default function App() {
                       {settings.exercise === "ship"
                         ? "Show your elbow and hand. Turn your forearm."
                         : settings.exercise === "wrist"
-                          ? "Show your hand and elbow from the side."
+                          ? "Show your elbow and your hand from the side, little finger to the camera."
                           : settings.exercise === "grip"
                             ? "Show your palm and fingertips to the camera."
                             : settings.exercise === "reach"
@@ -746,6 +791,8 @@ export default function App() {
               <InputPanel
                 onLesson={watchLesson}
                 exercise={settings.exercise}
+                range={getMovementRange(settings)}
+                reduced={settings.reducedMotion}
                 session={session}
                 tracking={tracking}
                 arm={settings.arm}

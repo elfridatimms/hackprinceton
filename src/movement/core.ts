@@ -10,6 +10,8 @@ export type TrackingFrame = {
   valid: boolean;
   arm?: Arm;
   posePoints?: Landmark[];
+  /** Steady, pinned pivot joint (elbow, or the hand's wrist) for on-screen reference. */
+  anchor?: Landmark | null;
   angle: number | null;
   height?: number | null;
   openness?: number | null;

@@ -15,7 +15,11 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { FRAME_MAX_AGE_MS } from "../movement/calibration";
-import { usableLandmark } from "../movement/core";
+import {
+  createOverlayState,
+  drawPoseOverlay,
+  type OverlayGuide,
+} from "./poseOverlay";
 import type { Tracking } from "../movement/useTracking";
 import type { Session } from "../game/session";
 export function CameraFeed({
@@ -24,22 +28,30 @@ export function CameraFeed({
   sourceLabel,
   exercise = "elbow",
   scan = false,
+  guide,
+  reduced = false,
 }: {
   tracking: Tracking;
   arm: "left" | "right";
   sourceLabel?: string;
   exercise?: Exercise;
   scan?: boolean;
+  /** Live game guide (current input, next target, hold progress). */
+  guide?: () => OverlayGuide | null;
+  reduced?: boolean;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const frameRef = useRef(tracking.frame);
   frameRef.current = tracking.frame;
+  const guideRef = useRef(guide);
+  guideRef.current = guide;
   useEffect(() => {
     let id = 0,
       lastDraw = -100;
+    const state = createOverlayState();
     const draw = () => {
       const now = performance.now();
-      if (now - lastDraw < 1000 / 30) {
+      if (now - lastDraw < 1000 / 50) {
         id = requestAnimationFrame(draw);
         return;
       }
@@ -47,176 +59,32 @@ export function CameraFeed({
       const c = canvas.current,
         vid = tracking.video.current;
       if (c) {
-        const ctx = c.getContext("2d")!;
-        ctx.clearRect(0, 0, c.width, c.height);
-        if (vid && vid.readyState >= 2) {
+        const ctx = c.getContext("2d");
+        if (ctx && vid && vid.readyState >= 2) {
           if (c.width !== vid.videoWidth || c.height !== vid.videoHeight) {
             c.width = vid.videoWidth;
             c.height = vid.videoHeight;
           }
-          ctx.drawImage(vid, 0, 0, c.width, c.height);
           const frame = frameRef.current;
-          if (performance.now() - frame.at < FRAME_MAX_AGE_MS) {
-            if (exercise === "grip" || exercise === "wrist") {
-              if (frame.valid || (scan && frame.pointsValid)) {
-                if (exercise === "wrist" && frame.posePoints) {
-                  const elbow =
-                      frame.posePoints[(frame.arm ?? arm) === "left" ? 13 : 14],
-                    wrist = frame.points[0];
-                  if (usableLandmark(elbow) && wrist) {
-                    ctx.beginPath();
-                    ctx.moveTo(elbow.x * c.width, elbow.y * c.height);
-                    ctx.lineTo(wrist.x * c.width, wrist.y * c.height);
-                    ctx.strokeStyle = "#f5dc97";
-                    ctx.lineWidth = 5;
-                    ctx.stroke();
-                    ctx.beginPath();
-                    ctx.arc(
-                      elbow.x * c.width,
-                      elbow.y * c.height,
-                      6,
-                      0,
-                      Math.PI * 2,
-                    );
-                    ctx.fillStyle = "#f5dc97";
-                    ctx.fill();
-                  }
-                }
-                const links = [
-                  [0, 1],
-                  [1, 2],
-                  [2, 3],
-                  [3, 4],
-                  [0, 5],
-                  [5, 6],
-                  [6, 7],
-                  [7, 8],
-                  [5, 9],
-                  [9, 10],
-                  [10, 11],
-                  [11, 12],
-                  [9, 13],
-                  [13, 14],
-                  [14, 15],
-                  [15, 16],
-                  [13, 17],
-                  [0, 17],
-                  [17, 18],
-                  [18, 19],
-                  [19, 20],
-                ];
-                const inside = (p: (typeof frame.points)[number] | undefined) =>
-                  !!p && p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1;
-                ctx.strokeStyle = scan ? "#8df4da" : "#fce6a1";
-                ctx.lineWidth = scan ? Math.max(3, c.width / 230) : 3;
-                ctx.lineCap = "round";
-                for (const [a, b] of links) {
-                  const p = frame.points[a],
-                    q = frame.points[b];
-                  if (inside(p) && inside(q)) {
-                    ctx.beginPath();
-                    ctx.moveTo(p.x * c.width, p.y * c.height);
-                    ctx.lineTo(q.x * c.width, q.y * c.height);
-                    ctx.stroke();
-                  }
-                }
-                for (const p of frame.points) {
-                  if (inside(p)) {
-                    ctx.beginPath();
-                    ctx.arc(p.x * c.width, p.y * c.height, 3, 0, Math.PI * 2);
-                    ctx.fillStyle = scan ? "#f0fff4" : "#fff2bd";
-                    ctx.fill();
-                  }
-                }
-              }
-            } else {
-              const left = (frame.arm ?? arm) === "left";
-              const pairs =
-                exercise === "reach"
-                  ? left
-                    ? [
-                        [11, 13],
-                        [13, 15],
-                      ]
-                    : [
-                        [12, 14],
-                        [14, 16],
-                      ]
-                  : scan
-                    ? [
-                        [11, 12],
-                        [11, 13],
-                        [13, 15],
-                        [15, 17],
-                        [15, 19],
-                        [17, 19],
-                        [15, 21],
-                        [12, 14],
-                        [14, 16],
-                        [16, 18],
-                        [16, 20],
-                        [18, 20],
-                        [16, 22],
-                        [11, 23],
-                        [12, 24],
-                        [23, 24],
-                        [23, 25],
-                        [25, 27],
-                        [27, 29],
-                        [29, 31],
-                        [27, 31],
-                        [24, 26],
-                        [26, 28],
-                        [28, 30],
-                        [30, 32],
-                        [28, 32],
-                      ]
-                    : left
-                      ? [
-                          [11, 13],
-                          [13, 15],
-                        ]
-                      : [
-                          [12, 14],
-                          [14, 16],
-                        ];
-              ctx.strokeStyle = scan ? "#8df4da" : "#ffdf8b";
-              ctx.lineWidth = scan ? Math.max(3, c.width / 230) : 5;
-              ctx.lineCap = "round";
-              for (const [a, b] of pairs) {
-                const p = frame.points[a],
-                  q = frame.points[b];
-                if (usableLandmark(p) && usableLandmark(q)) {
-                  ctx.beginPath();
-                  ctx.moveTo(p.x * c.width, p.y * c.height);
-                  ctx.lineTo(q.x * c.width, q.y * c.height);
-                  ctx.stroke();
-                }
-              }
-              const ids = [...new Set(pairs.flat())];
-              ids.forEach((id) => {
-                const p = frame.points[id];
-                if (!usableLandmark(p)) return;
-                ctx.beginPath();
-                ctx.arc(
-                  p.x * c.width,
-                  p.y * c.height,
-                  scan ? Math.max(4, c.width / 150) : 6,
-                  0,
-                  Math.PI * 2,
-                );
-                ctx.fillStyle = scan ? "#effff4" : "#fff4c4";
-                ctx.fill();
-              });
-            }
-          }
-        }
+          drawPoseOverlay(ctx, vid, frame, {
+            exercise,
+            arm,
+            scan,
+            reduced,
+            now,
+            state,
+            guide: guideRef.current?.() ?? null,
+            fresh:
+              now - frame.at < FRAME_MAX_AGE_MS &&
+              (frame.valid || (frame.pointsValid ?? false)),
+          });
+        } else if (ctx) ctx.clearRect(0, 0, c.width, c.height);
       }
       id = requestAnimationFrame(draw);
     };
     draw();
     return () => cancelAnimationFrame(id);
-  }, [tracking.video, arm, exercise, scan]);
+  }, [tracking.video, arm, exercise, scan, reduced]);
   return (
     <div
       className={"camera-feed " + (scan ? "scan-camera-feed" : "")}
@@ -233,7 +101,6 @@ export function CameraFeed({
             ? "Live MediaPipe landmark scan from the camera"
             : "Live mirrored camera preview with selected arm landmarks"
         }
-        style={{ transform: "scaleX(-1)" }}
       />
       <span className="live-label">
         <i />{" "}
@@ -263,7 +130,11 @@ export function InputPanel({
   onCameraOff,
   onLesson,
   exercise = "grip",
+  range,
+  reduced = false,
 }: {
+  range?: { lower: number; upper: number };
+  reduced?: boolean;
   session: Session;
   tracking: Tracking;
   arm: "left" | "right";
@@ -392,7 +263,24 @@ export function InputPanel({
               </>
             ) : (
               <>
-                <CameraFeed tracking={tracking} arm={arm} exercise={exercise} />
+                <CameraFeed
+                  tracking={tracking}
+                  arm={arm}
+                  exercise={exercise}
+                  reduced={reduced}
+                  guide={() => {
+                    const w = session.world.current;
+                    const live = w.phase === "playing" || w.phase === "practice";
+                    return live
+                      ? {
+                          value: w.position,
+                          goal: w.phase === "playing" ? (w.goal ?? null) : null,
+                          dwell: w.dwell ?? 0,
+                          range,
+                        }
+                      : null;
+                  }}
+                />
                 <div
                   className={
                     "tracking-label " + (tracking.frame.valid ? "valid" : "")
@@ -401,19 +289,28 @@ export function InputPanel({
                   <i />
                   {tracking.frame.message}
                 </div>
-                <p className="small">
-                  {exercise === "ship"
-                    ? "Elbow in view · turn your forearm like a wheel"
-                    : exercise === "wrist"
-                      ? "Rest your forearm · show your elbow and hand"
-                      : exercise === "grip"
-                        ? "One playing hand · palm to camera"
-                        : exercise === "reach"
-                          ? (arm === "left" ? "Left" : "Right") +
-                            " arm only · elbow and hand in view"
-                          : (arm === "left" ? "Left" : "Right") +
-                            " arm · side-on view"}
+                <p className="which-hand">
+                  {exercise === "grip" ? (
+                    <>
+                      <strong>Use one hand</strong> · left or right, palm to the
+                      camera
+                    </>
+                  ) : (
+                    <>
+                      <strong>
+                        Your {(tracking.frame.arm ?? arm).toUpperCase()}{" "}
+                        {exercise === "wrist" ? "hand" : "arm"}
+                      </strong>{" "}
+                      ·{" "}
+                      {exercise === "ship"
+                        ? "elbow still, turn the forearm"
+                        : exercise === "wrist"
+                          ? "side-on, little finger to the camera"
+                          : "side-on, shoulder to hand in view"}
+                    </>
+                  )}
                 </p>
+                <p className="small">Keep it inside the picture, near the middle.</p>
                 <button className="text-button" onClick={onCameraOff}>
                   <CameraOff size={15} /> Turn camera off
                 </button>

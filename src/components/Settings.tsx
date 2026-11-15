@@ -77,7 +77,6 @@ export function Settings({
             <option value="grip">Wake a sleepy flower · open & close</option>
             <option value="ship">Pirate Ship · steer left & right</option>
             <option value="wrist">Butterfly Breeze · tilt & return</option>
-            <option value="reach">Catch a firefly · reach & return</option>
             <option value="elbow">Give Luma a lift · bend & return</option>
           </select>
         </label>

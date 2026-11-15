@@ -1,4 +1,3 @@
-import { FireflyCatch } from "./FireflyCatch";
 import { fireflyHeight } from "./fireflyControl";
 import { SkyGates } from "./SkyGates";
 import { PirateBay } from "./PirateBay";
@@ -702,7 +701,6 @@ function Scenery({
       <CollectionSparkles world={world} />
       <Dragon world={world} welcome={welcome} />
       <Fireflies world={world} welcome={welcome} onCollect={onCollect} />
-      <FireflyCatch world={world} welcome={welcome} onCollect={onCollect} />
       <group ref={foliage}>
         {[-11, -10, -8.8, 9.7, 11.3, 12].map((x, i) => (
           <Tree
@@ -761,7 +759,9 @@ function Framing({ welcome, ship }: { welcome: boolean; ship: boolean }) {
     const ortho = camera as THREE.OrthographicCamera;
     const small = size.width < 560;
     const z = ship
-      ? Math.min(61, size.width / (small ? 10 : 17))
+      ? welcome
+        ? Math.min(61, size.width / (small ? 10 : 17))
+        : Math.min(72, size.width / (small ? 9 : 12.5))
       : small
         ? welcome
           ? 43
@@ -772,8 +772,9 @@ function Framing({ welcome, ship }: { welcome: boolean; ship: boolean }) {
       ortho.updateProjectionMatrix();
     }
     const x = ship ? 0 : small ? (welcome ? 3.5 : -0.4) : 0;
-    const y = ship ? (welcome ? 0.6 : 0.8) : small && welcome ? 6.1 : 1.7;
-    camera.position.set(x, y + 3.3, 22);
+    const y = ship ? (welcome ? 0.6 : -0.2) : small && welcome ? 6.1 : 1.7;
+    // Pirate Ship looks a little more from above so treasures can float in from afar.
+    camera.position.set(x, y + (ship && !welcome ? 9 : 3.3), 22);
     camera.lookAt(x, y, 0);
   });
   return null;

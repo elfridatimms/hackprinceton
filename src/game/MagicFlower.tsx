@@ -2,6 +2,10 @@ import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import type { WorldState } from "./session";
+import { Burst, DwellRing } from "./Effects";
+import { SeedMeadow } from "./SeedMeadow";
+
+const HEAD = new THREE.Vector3(1.7, 0.25, 4.2);
 export function MagicFlower({
   world,
   welcome,
@@ -13,7 +17,18 @@ export function MagicFlower({
     petals = useRef<THREE.Group>(null),
     head = useRef<THREE.Group>(null),
     eyes = useRef<THREE.Group>(null),
-    glow = useRef<THREE.Mesh>(null);
+    glow = useRef<THREE.Mesh>(null),
+    pollen = useRef<THREE.Group>(null);
+  const motes = useMemo(
+    () =>
+      Array.from({ length: 16 }, (_, i) => ({
+        a: (i / 16) * Math.PI * 2,
+        r: 0.5 + ((i * 37) % 10) / 14,
+        speed: 0.25 + ((i * 13) % 7) / 18,
+        offset: ((i * 29) % 11) / 11,
+      })),
+    [],
+  );
   const stem = useMemo(
     () =>
       new THREE.CatmullRomCurve3([
@@ -50,11 +65,50 @@ export function MagicFlower({
       7,
       dt,
     );
+    petals.current!.children.forEach((p) => {
+      const mat = (p as THREE.Mesh).material as THREE.MeshStandardMaterial;
+      mat.emissive.set("#ff9f7f");
+      mat.emissiveIntensity = welcome ? 0.05 : open * 0.32;
+    });
+    pollen.current!.children.forEach((m, i) => {
+      const q = motes[i];
+      const life = (t * q.speed + q.offset) % 1;
+      m.position.set(
+        Math.sin(q.a + t * 0.4) * q.r * (0.6 + life * 0.6),
+        -0.2 + life * 2.1,
+        0.3 + Math.cos(q.a) * 0.25,
+      );
+      const show = !welcome && !w.reduced && open > 0.45;
+      m.scale.setScalar(
+        show ? Math.max(0.001, Math.sin(life * Math.PI) * 0.05 * (open + 0.2)) : 0.001,
+      );
+    });
     const m = glow.current!.material as THREE.MeshBasicMaterial;
     m.opacity = 0.025 + open * 0.11;
     glow.current!.scale.setScalar(0.7 + open * 0.45);
   });
+  const playing = () =>
+    world.current.exercise === "grip" && world.current.phase === "playing" && !welcome;
   return (
+    <>
+    <DwellRing
+      world={world}
+      radius={1.35}
+      beads={26}
+      get={() => {
+        const w = world.current;
+        return playing() && (w.dwell ?? 0) > 0 ? { at: HEAD, dwell: w.dwell ?? 0 } : null;
+      }}
+    />
+    <Burst
+      world={world}
+      trigger={() => world.current.cycles ?? 0}
+      at={() => (playing() || world.current.phase === "completed" ? HEAD : null)}
+      colors={["#ffd38a", "#f4b6c2", "#fff3c0", "#c9b6ef"]}
+      count={30}
+      speed={3}
+    />
+    <SeedMeadow world={world} welcome={welcome} />
     <group
       ref={root}
       position={[welcome ? 6 : 1.7, -1.9, 3.5]}
@@ -141,6 +195,14 @@ export function MagicFlower({
           />
           <meshStandardMaterial color="#a89864" />
         </mesh>
+        <group ref={pollen}>
+          {motes.map((_, i) => (
+            <mesh key={i}>
+              <sphereGeometry args={[1, 8, 6]} />
+              <meshBasicMaterial color={i % 3 ? "#ffe9a3" : "#fff8dc"} />
+            </mesh>
+          ))}
+        </group>
         <mesh ref={glow} position={[0, 0, -0.3]}>
           <sphereGeometry args={[1.3, 24, 16]} />
           <meshBasicMaterial
@@ -152,5 +214,6 @@ export function MagicFlower({
         </mesh>
       </group>
     </group>
+    </>
   );
 }

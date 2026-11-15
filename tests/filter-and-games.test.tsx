@@ -121,14 +121,14 @@ describe("Child-friendly game navigation and lessons", () => {
     const tabs = Array.from(
       host.querySelectorAll<HTMLButtonElement>('[role="tab"]'),
     );
-    expect(tabs).toHaveLength(5);
+    expect(tabs).toHaveLength(4);
     expect(tabs[0].getAttribute("aria-selected")).toBe("true");
     act(() =>
       tabs[0].dispatchEvent(
         new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }),
       ),
     );
-    expect(selected).toBe("reach");
+    expect(selected).toBe("elbow");
     expect(document.activeElement).toBe(tabs[1]);
     expect(tabs[1].getAttribute("aria-controls")).toBe("forest-game-panel");
     act(() =>

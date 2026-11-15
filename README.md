@@ -1,6 +1,6 @@
 # Luma & the Firefly Forest
 
-A child-friendly, camera-controlled forest with five playable game tabs, original procedural Three.js art, animated movement lessons, and a complete welcome → animation → one practice movement → play → rest → finish flow.
+A child-friendly, camera-controlled forest with four playable game tabs, original procedural Three.js art, animated movement lessons, and a complete welcome → animation → one practice movement → play → rest → finish flow.
 
 ## Run
 
@@ -20,15 +20,16 @@ npm run build
 
 Serve `dist/` with a static HTTPS host. Camera permission requires HTTPS or localhost. MediaPipe models and WASM are bundled locally under `public/`; camera frames never leave the device. Google Fonts is optional and falls back to system fonts.
 
-## Five little games
+## Four little games
 
 | Tab | Movement input | Visual response |
 | --- | --- | --- |
-| Sleepy Flowers | Comfortably open and softly close one hand | A sculpted flower opens and returns to a bud; complete cycles fill a flower patch |
-| Firefly Trail | Rest one elbow and gently raise/lower that same hand | One fixed vertical lane, one stationary light at a time, and a jar that fills with actual catches |
-| Dragon Flight | Seated elbow bending and returning, viewed approximately side-on | Flappy-style scrolling columns with glowing gaps; real gap crossings earn stars and obstacle touches give gentle feedback |
-| Butterfly Breeze | Gently tilt a supported hand up and return | A lavender butterfly flutters between two nectar flowers using hand bend relative to the forearm |
-| Pirate Ship | Turn a bent forearm left and right around the elbow, facing the camera | An animated helm follows the forearm, the ship rocks and its flag flutters; islands reward real arrivals |
+| Sleepy Flowers | Comfortably open and softly close one hand | Closing gathers seeds in the magic flower; opening wide sows them across the meadow, where new flowers sprout and then open and close with the hand. Bees arrive as the meadow grows |
+| Dragon Flight | Seated elbow bending and returning, viewed approximately side-on | Flappy-style scrolling columns. The dragon is drawn at exactly the size the rules use, so it visibly fits the gaps it passes and visibly touches the columns it hits |
+| Butterfly Breeze | Bend the hand at the wrist away from straight, arm resting or raised | A butterfly flutters between two nectar flowers; the bend is measured against the forearm line |
+| Pirate Ship | Turn a bent forearm left and right around the elbow, facing the camera | Treasures float toward the ship, alternating left and right; steer under the light beam so they bump the hull. The lagoon, islands and a dolphin flow past |
+
+Firefly Trail was retired from the game list. Its movement math remains in `src/movement` for now.
 
 The tabs have visible selected states and support arrow keys, Home, and End. Switching games during active play pauses first and asks before finishing that adventure. Each exercise keeps an independent movement range. Session summaries record the actual game and input mode.
 
@@ -60,7 +61,7 @@ Firefly Trail, Dragon Flight, Butterfly Breeze and Pirate Ship use the **actual 
 - **Firefly lift:** `(selectedElbow.y - selectedWrist.y) / projectedForearmLength`, in −1..1 with aspect correction. Only the explicitly selected elbow and wrist are required (visibility ≥0.55); the opposite arm and both shoulders are absent from the calculation. The chosen side is never replaced when it leaves view. The first acquisition, a stale gap, and large landmark jumps require three consistent timestamped observations spanning ≥120 ms. A 0.025 input deadband and bounded smoothing suppress jitter. Losing the selected joint produces invalid input and freezes flight; reacquisition cannot teleport Luma.
 - **Elbow:** aspect-corrected interior shoulder–elbow–wrist angle; 180° is straight. This follows the reference repository's 2D geometry.
 - **Hand opening:** mean distance from the wrist to four fingertips divided by wrist-to-middle-knuckle distance; the thumb is not required.
-- **Butterfly bend:** signed angle between elbow→wrist and wrist→middle-knuckle, with aspect correction. Raising or rotating the whole forearm no longer masquerades as wrist bending. This is still a projected 2D game input, not a validated anatomical joint measurement. Side view and a visible elbow are required.
+- **Butterfly bend:** angle between the forearm line (elbow→wrist) and the hand line (wrist→centre of the four finger knuckles), with aspect correction. 0° is "level": the hand continues the forearm. The game uses how far the hand bends away from level (0–90°), so the forearm may rest sideways on a table or point up in the air. Raising, lowering or rotating the whole arm does not change it. The hand must be seen from its side (little finger toward the camera, thumb away); a hand pointing straight at the camera is rejected. The camera overlay draws the level line, the current bend arc and a ghost hand at the next target. This is a projected 2D game input, not a validated anatomical joint measurement.
 - **Pirate steering:** aspect-corrected elbow→wrist direction relative to upright in the mirrored preview. The elbow anchors a forearm turn; fingers need not spread or tilt. This is not a claim to measure axial elbow rotation.
 
 Configured endpoints map to the whole usable game range and values are clamped. Moving farther than configured provides no additional reward. Exercise selection and physical limits for rehabilitation should be agreed with the treating professional; the application does not prescribe progression.
@@ -69,7 +70,15 @@ Configured endpoints map to the whole usable game range and values are clamped. 
 
 The reference repository uses a 0.15 frame-based EMA. Luma combines Holistic's landmark smoothing with a median of three samples and a time-aware EMA for **every** attempt and play frame, including before personalization. Default time constants are 0.1 s for direct hand input and 0.12 s for angles; deadbands are 0.003 picture height, 0.012 opening units, or 0.3°. Personal profiles fit bounded variations. Invalid input and stale gaps reset the filter immediately. Independent game smoothing defaults to 0.12 s and the dragon follows it promptly, avoiding stacked slow responses.
 
-Firefly uses one stationary target at a time, alternating between two nearby heights. Luma has no decorative bob or lateral flight in this game. Its vertical lane scales with the observed comfortable movement, from 0.5 to at most 1.6 world units (Dragon Flight uses 4.2), so a tiny range no longer becomes full-screen travel; normalized motion is capped at 0.38/second and ignores ≤0.035 wobble. Targets only reward real arrival and a short dwell. Firefly has a single light on its welcome screen as well; other games keep their existing decorations. Dragon gates move only during active play, score once on actual geometric crossing, and never award a gate after an obstacle touch. Butterfly visits alternate between two flowers with actual arrival/dwell. The ship's large helm tracks current input; sails, flag, waves, collection sparks, wings and score updates animate the scene. Pausing or losing tracking stops course progression. Reduced-motion preferences keep the essential movement while suppressing decorative motion. The 3D scene uses demand rendering with a 30 Hz animation budget and a 1.25 pixel-ratio cap; camera previews also draw at most 30 Hz, leaving more rendering capacity for tracking.
+Dragon gates move only during active play, score once on actual geometric crossing, and never award a gate after an obstacle touch. Drawing and rules share one geometry (`src/game/flightCourse.ts`): the dragon is drawn at `FLIGHT_SCALE` with its lantern tucked in, its body spans ±0.78 around its centre, columns have a ±1.5 gap, so the dragon's centre must stay within ±0.72 of the gap centre; a touch counts while a column is within column radius plus wing reach. Butterfly visits alternate between two flowers with actual arrival/dwell. Pirate treasures (`src/game/treasureCourse.ts`) drift from far away to the ship and are caught only if the hull (±1.05) is under them on arrival; missed ones float past with no penalty, and sides alternate so both turns are needed. The helm sits in the corner and tracks current input; sails, flag, captain, waves, islands, a dolphin and seagulls animate the scene. Pausing or losing tracking stops course progression. Reduced-motion preferences keep the essential movement while suppressing decorative motion. The 3D scene uses demand rendering with a 30 Hz animation budget and a 1.25 pixel-ratio cap; camera previews also draw at most 30 Hz, leaving more rendering capacity for tracking.
+
+### Landmark smoothing, fixed reference point, and the camera overlay
+
+Before any value is computed, every pose and hand landmark passes through a **One Euro filter** (`LandmarkSmoother` in `src/movement/filter.ts`): strong smoothing while the child holds still, little lag during a real movement, time-aware across inference rates, and reset after stale gaps. The pivot joint of each game (elbow for Firefly, Butterfly and Pirate Ship; shoulder and elbow for Dragon) is held by an **`AnchorLock`**: wobbles within 1.8% of the picture keep one pinned reference point that drifts only slowly, and a sustained move longer than 180 ms re-pins it smoothly. Brief outliers never start a re-pin. Angles are therefore measured from a steady pivot. The existing median/EMA signal filter still runs afterwards.
+
+The camera preview mirrors the picture in the canvas and eases landmarks every render frame, so 20 Hz inference never looks like stepping. It draws a glowing skeleton in each game's colour, a dashed ring on the pinned pivot (the fixed point to keep still), a fading trail of the moving hand, a dashed "ghost" forearm showing where the next target is (Firefly, Dragon, Pirate Ship), and a movement meter with the next target and a hold-progress ring. Everything turns green when the child is on target.
+
+The games share small effects from `src/game/Effects.tsx`: hold rings that fill while the child stays on a target, guide dots toward the next target, trails, and sparkle bursts on every real success. Sleepy Flowers adds rising pollen, glowing petals and a little garden that grows one flower per completed cycle; Dragon Flight adds drifting clouds, gap glow when aligned, and stars that vanish when collected; Butterfly Breeze banks into its turns; Pirate Ship adds a wake, gold-coin bursts and seagulls. A short word of encouragement pops up after each success, with a streak count from three in a row.
 
 ## Calibration, counting, and rest
 

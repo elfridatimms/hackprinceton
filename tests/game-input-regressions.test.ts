@@ -192,3 +192,54 @@ describe("Flappy-style sky gates", () => {
     expect(g.center).toBeLessThan(2.85);
   });
 });
+describe("Dragon size matches the gate rules", () => {
+  it("lets the whole drawn dragon through exactly when it fits between the columns", async () => {
+    const { GATE_HALF_GAP, DRAGON_HALF_HEIGHT, SAFE_BAND, fitsGap } =
+      await import("../src/game/flightCourse");
+    expect(SAFE_BAND).toBeCloseTo(GATE_HALF_GAP - DRAGON_HALF_HEIGHT);
+    expect(SAFE_BAND).toBeGreaterThan(0.5);
+    expect(fitsGap(1 + SAFE_BAND - 0.01, 1)).toBe(true);
+    expect(fitsGap(1 + SAFE_BAND + 0.01, 1)).toBe(false);
+  });
+  it("counts a touch when the dragon's wing reaches a column it does not fit through", () => {
+    const g = createSkyGates()[0];
+    g.x = DRAGON_X + 0.95;
+    const tooHigh = (g.center + 0.9 + 0.3) / 4.2;
+    expect(advanceGate(g, 0.01, tooHigh, 1)).toBe("touch");
+  });
+});
+describe("Butterfly bend in any arm position", () => {
+  const pose = () =>
+    Array.from({ length: 33 }, () => ({ x: 0.5, y: 0.5, visibility: 0.99 }));
+  const hand = (wx: number, wy: number, kx: number, ky: number) => {
+    const h = Array.from({ length: 21 }, () => ({ x: wx, y: wy }));
+    for (const i of [5, 9, 13, 17]) h[i] = { x: kx, y: ky };
+    return h;
+  };
+  it("reads a straight hand as level (0°) with the forearm resting sideways", async () => {
+    const { wristBend } = await import("../src/movement/exercises");
+    const p = pose();
+    p[14] = { x: 0.3, y: 0.6, visibility: 0.99 };
+    expect(wristBend(p, hand(0.55, 0.6, 0.65, 0.6), "right", 1)).toBeCloseTo(0);
+    expect(wristBend(p, hand(0.55, 0.6, 0.65, 0.5), "right", 1)).toBeCloseTo(45);
+  });
+  it("works with the forearm raised in the air", async () => {
+    const { wristBend, wristBendSigned } = await import("../src/movement/exercises");
+    const p = pose();
+    p[14] = { x: 0.5, y: 0.8, visibility: 0.99 };
+    expect(wristBend(p, hand(0.5, 0.5, 0.5, 0.4), "right", 1)).toBeCloseTo(0);
+    const forward = wristBendSigned(p, hand(0.5, 0.5, 0.6, 0.4), "right", 1)!;
+    const back = wristBendSigned(p, hand(0.5, 0.5, 0.4, 0.4), "right", 1)!;
+    expect(Math.abs(forward)).toBeCloseTo(45);
+    expect(Math.sign(forward)).toBe(-Math.sign(back));
+    expect(wristBend(p, hand(0.5, 0.5, 0.4, 0.4), "right", 1)).toBeCloseTo(45);
+  });
+  it("needs the elbow and a visible hand side", async () => {
+    const { wristBend } = await import("../src/movement/exercises");
+    const p = pose();
+    p[14] = { x: 0.3, y: 0.6, visibility: 0.1 };
+    expect(wristBend(p, hand(0.55, 0.6, 0.65, 0.6), "right", 1)).toBeNull();
+    p[14].visibility = 0.99;
+    expect(wristBend(p, hand(0.55, 0.6, 0.551, 0.6), "right", 1)).toBeNull();
+  });
+});

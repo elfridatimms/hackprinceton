@@ -6126,3 +6126,114 @@ input[type="range"] {
     animation: none !important;
   }
 }
+
+/* Friendly success pop-up over the game. */
+.cheer-pop {
+  position: absolute;
+  left: 50%;
+  top: 30%;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
+  transform: translate(-50%, 0);
+  animation: cheer-pop 1.4s cubic-bezier(0.2, 0.9, 0.3, 1.25) both;
+}
+.cheer-pop strong {
+  font-family: Nunito, "DM Sans", system-ui, sans-serif;
+  font-size: clamp(30px, 4.6vw, 54px);
+  font-weight: 900;
+  letter-spacing: 0.01em;
+  color: #fff8df;
+  -webkit-text-stroke: 1.5px #2c5a4b;
+  paint-order: stroke fill;
+  text-shadow:
+    0 4px 0 #2c5a4b,
+    0 10px 24px rgba(34, 72, 60, 0.35),
+    0 0 26px rgba(255, 214, 120, 0.7);
+}
+.cheer-pop span {
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ffe08a, #ffc58f);
+  color: #2c5a4b;
+  font-size: 13px;
+  font-weight: 800;
+  box-shadow: 0 6px 16px rgba(34, 72, 60, 0.22);
+}
+@keyframes cheer-pop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 18px) scale(0.6) rotate(-4deg);
+  }
+  18% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1.08) rotate(2deg);
+  }
+  32% {
+    transform: translate(-50%, 0) scale(1) rotate(0deg);
+  }
+  78% {
+    opacity: 1;
+    transform: translate(-50%, -8px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -26px) scale(0.96);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cheer-pop {
+    animation-duration: 1.4s;
+    animation-name: cheer-fade;
+  }
+  @keyframes cheer-fade {
+    0%,
+    100% {
+      opacity: 0;
+    }
+    15%,
+    80% {
+      opacity: 1;
+    }
+  }
+}
+
+.patch-hint {
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
+  color: #8a6a2c;
+}
+
+/* The helm sits in the corner so the sea in front of the ship stays visible. */
+.game-viewport .captain-helm {
+  left: auto;
+  right: 18px;
+  bottom: 70px;
+  transform: none;
+  padding: 8px 12px 7px;
+}
+.game-viewport .captain-helm svg {
+  width: 74px;
+  height: 74px;
+}
+
+.which-hand {
+  margin: 8px 0 2px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #fff4d6;
+  border: 1px solid #f0d99a;
+  color: #4b5a3f;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.which-hand strong {
+  color: #24483e;
+  font-weight: 800;
+}

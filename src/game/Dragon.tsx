@@ -1,4 +1,9 @@
 import { fireflyHeight } from "./fireflyControl";
+import {
+  DRAGON_CENTER_OFFSET,
+  FLIGHT_SCALE,
+  flightHeight,
+} from "./flightCourse";
 import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
@@ -112,8 +117,13 @@ export function Dragon({
       ? 1.65
       : reach
         ? fireflyHeight(w.position, w.reachTravel)
-        : -0.3 + w.position * 4.2;
+        : flightHeight(w.position) - DRAGON_CENTER_OFFSET;
     const r = root.current!;
+    // Dragon Flight draws Luma at the exact size the gate rules use.
+    const flight = w.exercise === "elbow" && !welcome;
+    r.scale.setScalar(welcome ? 1.12 : flight ? FLIGHT_SCALE : 0.8);
+    lantern.current!.position.y = flight ? -0.82 : -1.04;
+    lantern.current!.scale.setScalar(flight ? 0.7 : 1);
     if (!reach || welcome || !rest)
       r.position.y =
         reach && !welcome
