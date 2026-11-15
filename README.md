@@ -37,8 +37,8 @@ Every game has a large, silent animated demonstration before camera permission, 
 
 ## Play
 
-- **Let’s play with Luma** opens the demonstration and camera setup. Camera permission is requested automatically as soon as the animation ends, with no extra button.
-- **Try without a camera** / **Play with buttons instead** uses ↑ / ↓ (← / → for Pirate Ship) or a touch/pointer slider. Demo controls are explicitly labeled and never counted as camera-measured rehabilitation performance.
+- The big **Play** button opens the demonstration and camera setup. Camera permission is requested automatically as soon as the animation ends, with no extra button.
+- **Play without a camera** / **Play with buttons instead** uses ↑ / ↓ (← / → for Pirate Ship) or a touch/pointer slider. Demo controls are explicitly labeled and never counted as camera-measured rehabilitation performance.
 - A live MediaPipe scan shows the actual mirrored video, current landmarks, on-device inference time and a recent movement trace. One ordinary practice movement learns a personal session range without separately saving positions. Grown-up settings also allow a configured range.
 - Escape, pause, or **Take a break** opens the resting screen. Returning from another browser tab requires resuming; the tracking gate reacquires before counting.
 - Grown-up settings control the exercise, comfortable range, demonstration cycle target, speed, smoothing, sound, reduced motion, and optional browser-local summaries. The default eight cycles is a demo setting, not a treatment recommendation.

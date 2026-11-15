@@ -14,16 +14,12 @@ import {
   VolumeX,
   SlidersHorizontal,
   Sparkles,
-  ScanLine,
   Leaf,
-  Heart,
-  ArrowUpRight,
   Pause,
   Play,
   RotateCcw,
   Home,
   CameraOff,
-  Footprints,
   Moon,
   Check,
   Wind,
@@ -40,7 +36,6 @@ import { useTracking } from "./movement/useTracking";
 import { audio } from "./audio/sound";
 import {
   Portrait,
-  SeatIllustration,
   TreeIllustration,
 } from "./components/Illustrations";
 import { InputPanel } from "./components/CameraPanel";
@@ -296,10 +291,6 @@ export default function App() {
             <small>& THE FIREFLY FOREST</small>
           </span>
         </button>
-        <div className="header-center">
-          <span className="status-spark">✦</span> A little light goes a long
-          way.
-        </div>
         <div className="header-actions">
           <button
             className="sound-button"
@@ -334,140 +325,27 @@ export default function App() {
               />
               <div className="welcome-wash" />
               <div className="hero-copy">
-                <div className="hero-label">
-                  <span /> YOUR MOVEMENT MAKES THE MAGIC
-                </div>
                 <h1>
                   {exercises[settings.exercise].hero[0]}
                   <br />
                   <em>{exercises[settings.exercise].hero[1]}</em>
                 </h1>
-                <p>
-                  {exercises[settings.exercise].intro}
-                  <br />
-                  {exercises[settings.exercise].promise}
-                </p>
-                <div className="hero-buttons">
-                  <button className="button primary" onClick={startCamera}>
-                    Meet your magic <ArrowRight size={19} />
-                  </button>
-                  <button className="hero-demo" onClick={startDemo}>
-                    Try without a camera <ArrowUpRight size={16} />
-                  </button>
-                </div>
-                <div className="hero-scan-promise">
-                  <ScanLine size={17} />
-                  <div>
-                    <strong>First, meet your magic.</strong>
-                    <span>
-                      Live MediaPipe scan · Your comfortable movement · Made for
-                      you
-                    </span>
-                  </div>
-                </div>
-                <div className="hero-micro">
-                  <Heart size={14} /> A fresh little movement scan, just for
-                  you.
-                </div>
-              </div>
-              <div className="meet-luma">
-                <span>
-                  {settings.exercise === "ship"
-                    ? "A little island awaits"
-                    : "Meet Luma"}
-                </span>
-                <svg viewBox="0 0 80 48" fill="none">
-                  <path
-                    d="M1 2q50-8 58 24l5 13m-13-7 13 7 6-13"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              </div>
-              <div className="scene-caption">
-                <span className="tiny-firefly">✦</span>{" "}
-                {settings.exercise === "ship"
-                  ? "YOUR LITTLE SHIP IS READY TO SAIL"
-                  : "THE FOREST IS WAITING FOR YOU"}
-              </div>
-              <div className="scene-bottom-stamp">
-                <Leaf size={14} /> A little wonder. A lot of heart.
+                <p>{exercises[settings.exercise].promise}</p>
+                <button
+                  className="start-button"
+                  onClick={startCamera}
+                  aria-label={`Play ${exercises[settings.exercise].tab}`}
+                >
+                  <span className="start-play" aria-hidden="true">
+                    <Play size={30} fill="currentColor" />
+                  </span>
+                  Play
+                </button>
+                <button className="hero-demo" onClick={startDemo}>
+                  Play without a camera
+                </button>
               </div>
             </div>
-            <section className="comfort-strip" aria-label="At your own pace">
-              <div className="comfort-item">
-                <span className="comfort-icon seat">
-                  <SeatIllustration small />
-                </span>
-                <div>
-                  <h3>Settle in, little explorer.</h3>
-                  <p>Find a comfy seat. The forest can wait.</p>
-                </div>
-              </div>
-              <span className="comfort-divider" />
-              <div className="comfort-item">
-                <span className="comfort-icon">
-                  <Wind size={27} strokeWidth={1.4} />
-                </span>
-                <div>
-                  <h3>Your movement makes the magic.</h3>
-                  <p>Even small movements go a long way.</p>
-                </div>
-              </div>
-              <span className="comfort-divider" />
-              <div className="comfort-item">
-                <span className="comfort-icon peach">
-                  <Moon size={25} strokeWidth={1.4} />
-                  <span className="mini-star">✧</span>
-                </span>
-                <div>
-                  <h3>A break is part of the adventure.</h3>
-                  <p>Rest anytime. Luma will be right here.</p>
-                </div>
-              </div>
-            </section>
-            <section className="journey-teaser">
-              <div>
-                <span className="eyebrow">ONE LITTLE JOURNEY</span>
-                <h2>
-                  {settings.exercise === "ship"
-                    ? "A little sea of sparkling discoveries."
-                    : "A forest to bring back to light."}
-                </h2>
-              </div>
-              <div className="chapter-preview">
-                <span className="chapter-dot meadow">
-                  <Leaf size={18} />
-                </span>
-                <span>
-                  {settings.exercise === "ship"
-                    ? "The little lagoon"
-                    : "The waking meadow"}
-                </span>
-                <i />
-                <span className="chapter-dot woods">
-                  <Footprints size={18} />
-                </span>
-                <span>
-                  {settings.exercise === "ship"
-                    ? "Sparkle Island"
-                    : "The whispering woods"}
-                </span>
-                <i />
-                <span className="chapter-dot grove">
-                  <TreeIllustration />
-                </span>
-                <span>
-                  {settings.exercise === "ship"
-                    ? "A happy homecoming"
-                    : "The lantern grove"}
-                </span>
-              </div>
-              <span className="teaser-end">
-                Let’s make a little magic <Sparkles size={15} />
-              </span>
-            </section>
           </>
         ) : (
           <>
@@ -861,7 +739,6 @@ export default function App() {
               </button>
             </div>
             <div className="play-footnote">
-              <Heart size={13} /> Gentle is good. There’s no hurry here.
               <span>
                 {session.mode === "demo"
                   ? "Demo activity is not a clinical measurement."
@@ -872,10 +749,6 @@ export default function App() {
         )}
       </main>
       <footer>
-        <span>
-          <span className="footer-spark">✦</span> Small steps. Wonderful things.
-        </span>
-        <span>Made with a little magic, for every little explorer.</span>
         <button
           onClick={() => {
             setShowDetails(true);

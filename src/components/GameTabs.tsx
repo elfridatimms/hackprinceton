@@ -139,9 +139,6 @@ export function GameTabs({
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
   return (
     <nav className="forest-games" aria-label="Choose a forest game">
-      <div className="games-label">
-        <span>✦</span> A forest full of little adventures
-      </div>
       <div className="game-tabs" role="tablist" aria-label="Forest games">
         {exerciseOrder.map((item, i) => (
           <button
