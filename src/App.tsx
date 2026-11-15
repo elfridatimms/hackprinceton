@@ -590,6 +590,7 @@ export default function App() {
                   <div className="practice-card">
                     <div className="practice-guide">
                       <MovementGuide
+                        key={practiceUp ? "down" : "up"}
                         exercise={settings.exercise}
                         direction={practiceUp ? "down" : "up"}
                         compact

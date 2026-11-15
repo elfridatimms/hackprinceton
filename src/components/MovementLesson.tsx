@@ -1,3 +1,5 @@
+import { ReadInstruction } from "./ReadInstruction";
+import { childInstructions } from "../movement/instructions";
 import { X, Sparkles, ArrowRight } from "lucide-react";
 import { exercises, type Exercise } from "../movement/exercises";
 import { MovementGuide } from "./MovementGuide";
@@ -12,6 +14,7 @@ export function MovementLesson({
   onTry: () => void;
 }) {
   const game = exercises[exercise];
+  const instruction = childInstructions[exercise];
   return (
     <div className="modal-backdrop lesson-backdrop">
       <section
@@ -36,7 +39,10 @@ export function MovementLesson({
           <GameGlyph exercise={exercise} />
         </div>
         <h2 id="lesson-title">{game.title}</h2>
-        <p>Watch the little move. Then it’s your turn.</p>
+        <p>Watch the picture. Then copy the move.</p>
+        <ReadInstruction
+          text={`${game.up} Then, ${game.down.toLowerCase()} ${instruction.tip}`}
+        />
         <div className="lesson-example">
           <MovementGuide exercise={exercise} />
         </div>
@@ -51,7 +57,7 @@ export function MovementLesson({
           </li>
         </ol>
         <p className="lesson-reassurance">
-          Tiny is lovely. Stop wherever feels comfy.
+          A small move is enough. Stop where it feels comfy.
         </p>
         <button className="button primary full" onClick={onTry}>
           My turn! <ArrowRight size={17} />

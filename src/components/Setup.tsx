@@ -1,3 +1,5 @@
+import { childInstructions } from "../movement/instructions";
+import { ReadInstruction } from "./ReadInstruction";
 import { PersonalTune } from "./PersonalTune";
 import { TrackingScan } from "./TrackingScan";
 import type { PersonalProfile } from "../movement/personalization";
@@ -81,6 +83,7 @@ export function Setup({
   const ship = settings.exercise === "ship";
   const handMode = grip || wrist || ship;
   const exercise = exercises[settings.exercise];
+  const instruction = childInstructions[settings.exercise];
   const value = movementValue(tracking.frame, settings.exercise);
   const stage = tuning ? 3 : session.phase === "calibration" ? 2 : step;
   useEffect(() => {
@@ -301,7 +304,10 @@ export function Setup({
             <h2 id="setup-title">
               {grip ? "Let’s wake a sleepy flower!" : exercise.title + "!"}
             </h2>
-            <p>{exercise.description}</p>
+            <p>{instruction.goal}</p>
+            <ReadInstruction
+              text={`Watch the picture. ${instruction.high} Then, ${instruction.low.toLowerCase()} ${instruction.tip}`}
+            />
             <div className="flower-mission-badge">
               <span className="mission-game-icon">
                 <GameGlyph exercise={settings.exercise} />
@@ -405,17 +411,10 @@ export function Setup({
               <Sparkles size={13} /> LET’S MEET YOUR MAGIC
             </span>
             <h2 id="setup-title">Luma can see your little moves.</h2>
-            <p>
-              {ship
-                ? "Show one palm with fingers pointing up. Tilt it gently like a wave."
-                : wrist
-                  ? "Show your hand from a little side view, with fingers pointing across the picture."
-                  : grip
-                    ? "Show one hand, with your palm facing the camera."
-                    : reach
-                      ? "Sit facing the camera. Give us a little wave."
-                      : "Sit a little sideways. Let the camera see your arm."}
-            </p>
+            <p>{instruction.camera}</p>
+            <ReadInstruction
+              text={`${instruction.camera} ${instruction.help}`}
+            />
             <TrackingScan
               tracking={tracking}
               exercise={settings.exercise}
@@ -464,47 +463,16 @@ export function Setup({
             <div className="little-mission">
               <span>{endpoint === "lower" ? "1" : "2"}</span>
               <div>
-                <small>YOUR TWO LITTLE MAGIC SPOTS</small>
+                <small>COPY THIS LITTLE MOVE</small>
                 <h2 id="setup-title">
-                  {ship
-                    ? endpoint === "lower"
-                      ? "A little lean to the left."
-                      : "A little lean to the right."
-                    : wrist
-                      ? endpoint === "lower"
-                        ? "A soft, resting hand."
-                        : "Give your butterfly a breeze!"
-                      : grip
-                        ? endpoint === "lower"
-                          ? "A soft, sleepy hand."
-                          : "Let your flower say hello!"
-                        : endpoint === "lower"
-                          ? "Find your cozy spot."
-                          : reach
-                            ? "Reach for a little light."
-                            : "Give Luma a little lift!"}
+                  {endpoint === "lower" ? instruction.low : instruction.high}
                 </h2>
               </div>
             </div>
-            <p>
-              {ship
-                ? endpoint === "lower"
-                  ? "Lean your open hand a little left, like the picture. Hold your comfy spot."
-                  : "Lean your open hand a little right. Tiny movements are lovely."
-                : wrist
-                  ? endpoint === "lower"
-                    ? "Rest your forearm comfortably. Find a gentle starting spot for your hand."
-                    : "Gently tilt your hand up a little. Stop wherever feels comfy."
-                  : grip
-                    ? endpoint === "lower"
-                      ? "Close your fingers gently, like a cozy little fist. No squeezing."
-                      : "Open your fingers, just as much as feels comfy."
-                    : endpoint === "lower"
-                      ? "Rest your hand where it feels comfy. Hold it still. Luma will save it for you."
-                      : reach
-                        ? "Lift your hand just a little. Stop wherever feels comfy."
-                        : "Bend your arm just a little. Stop wherever feels comfy."}
-            </p>
+            <p>{instruction.tip}</p>
+            <ReadInstruction
+              text={`${endpoint === "lower" ? instruction.low : instruction.high} ${instruction.tip} Hold still when you get there. Luma will save it for you.`}
+            />
             <div className="child-calibration-visual">
               <div className="calibration-camera">
                 <TrackingScan
@@ -587,16 +555,16 @@ export function Setup({
                       ? "Automatic saving is paused."
                       : preparing
                         ? endpoint === "upper"
-                          ? "First spot saved. Now try the next little move."
-                          : "Find your comfy spot."
+                          ? "First one saved!"
+                          : instruction.low
                         : !eligible
-                          ? "First spot saved. Move softly to your other spot."
-                          : "Hold gently. Luma will remember."}
+                          ? instruction.high
+                          : "Hold still."}
                 </strong>
                 <span>
                   {!fresh
                     ? tracking.frame.message
-                    : "No button to press. Your spot saves automatically."}
+                    : "Luma saves it for you. No buttons to press."}
                 </span>
               </div>
             </div>

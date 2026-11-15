@@ -29,7 +29,10 @@ export function GripGuide({
             className="grip-finger"
             style={{
               transformOrigin: `${f.x}px 123px`,
-              transform: direction === "high" ? "scaleY(1)" : "scaleY(.18)",
+              transform:
+                direction === "high" || direction === "up"
+                  ? "scaleY(1)"
+                  : "scaleY(.18)",
             }}
           >
             <path
@@ -51,7 +54,10 @@ export function GripGuide({
           className="grip-thumb"
           style={{
             transformOrigin: "93px 150px",
-            transform: direction === "high" ? "rotate(0deg)" : "rotate(48deg)",
+            transform:
+              direction === "high" || direction === "up"
+                ? "rotate(0deg)"
+                : "rotate(48deg)",
           }}
         >
           <path
@@ -103,7 +109,10 @@ export function GripGuide({
             <g
               className="guide-flower-petals"
               style={{
-                transform: direction === "high" ? "scale(1)" : "scale(.35)",
+                transform:
+                  direction === "high" || direction === "up"
+                    ? "scale(1)"
+                    : "scale(.35)",
               }}
             >
               {Array.from({ length: 7 }, (_, i) => (

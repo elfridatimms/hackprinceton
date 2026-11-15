@@ -1,3 +1,4 @@
+import { childInstructions } from "./instructions";
 import {
   clamp,
   usableLandmark,
@@ -15,8 +16,8 @@ export const exercises = {
     title: "Wake a sleepy flower",
     short: "Open. Close. Bloom!",
     description: "Little hands. Lovely blossoms.",
-    up: "Open your hand to wake the flower.",
-    down: "Close it softly. No squeezing.",
+    up: childInstructions.grip.high,
+    down: childInstructions.grip.low,
     camera:
       "Show one hand to the camera, palm facing forward. Keep your wrist and fingertips in the picture.",
   },
@@ -28,8 +29,8 @@ export const exercises = {
     title: "Catch a firefly",
     short: "Reach & return",
     description: "A little lift. A little light.",
-    up: "Reach up to the little light.",
-    down: "Bring your hand softly back.",
+    up: childInstructions.reach.high,
+    down: childInstructions.reach.low,
     camera: "Face the camera. Keep both shoulders and your hand in view.",
   },
   elbow: {
@@ -40,8 +41,8 @@ export const exercises = {
     title: "Give Luma a lift",
     short: "Bend & return",
     description: "Little bends. Lovely wingbeats.",
-    up: "Bend your arm to lift Luma.",
-    down: "Let your hand come softly down.",
+    up: childInstructions.elbow.high,
+    down: childInstructions.elbow.low,
     camera:
       "Turn a little to the side. Keep your shoulder, elbow and hand in view.",
   },
@@ -53,8 +54,8 @@ export const exercises = {
     title: "Give a butterfly a breeze",
     short: "Tilt. Flutter. Return.",
     description: "A little tilt. A lovely flutter.",
-    up: "Gently tilt your hand up.",
-    down: "Bring your hand softly back.",
+    up: childInstructions.wrist.high,
+    down: childInstructions.wrist.low,
     camera:
       "Show one hand from a slight side view, with your fingers pointing across the picture. Keep your wrist and knuckles visible.",
   },
@@ -66,8 +67,8 @@ export const exercises = {
     title: "Steer a little pirate ship",
     short: "Tilt. Sail. Discover!",
     description: "Gentle hands. Happy little voyages.",
-    up: "Tilt your open hand a little to the right.",
-    down: "Tilt it softly left. Sail back again.",
+    up: childInstructions.ship.high,
+    down: childInstructions.ship.low,
     camera:
       "Show one palm to the camera with fingers pointing up. Gently lean your hand left and right, like a little wave. Keep your wrist and knuckles visible.",
   },

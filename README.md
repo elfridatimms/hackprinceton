@@ -32,7 +32,7 @@ Serve `dist/` with a static HTTPS host. Camera permission requires HTTPS or loca
 
 The tabs have visible selected states and support arrow keys, Home, and End. Switching games during active play pauses first and asks before finishing that adventure. Each exercise keeps an independent movement range. Session summaries record the actual game and input mode.
 
-Every game has a large animated demonstration before camera permission, a pose illustration beside calibration, an in-game guide, and **Show me how** / **?** controls to replay the lesson. Lessons pause active play; **My turn!** resumes it. Text stays short and English. Technical information is kept in grown-up controls.
+Every game has a large animated demonstration before camera permission, a pose illustration beside calibration, an in-game guide, and **Show me how** / **?** controls to replay the lesson. Lessons pause active play; **My turn!** resumes it. Instructions use one concrete action at a time (for example, “Open your hand.” or “Tilt your hand left.”), followed by “Hold still.” for automatic saving. Directional demonstrations show the requested action and hold its target pose; the full lesson still loops both directions. **Luma, tell me!** reads the displayed instruction on demand when browser speech synthesis is supported. Reading stops when the next instruction appears or the guide closes. Text stays English. Technical information is kept in grown-up controls.
 
 ## Play
 

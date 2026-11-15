@@ -75,7 +75,10 @@ export function MovementGuide({
             className="reach-arm"
             style={{
               transformOrigin: "112px 103px",
-              transform: direction === "high" ? "rotate(95deg)" : undefined,
+              transform:
+                direction === "high" || direction === "up"
+                  ? "rotate(95deg)"
+                  : undefined,
             }}
           >
             <path

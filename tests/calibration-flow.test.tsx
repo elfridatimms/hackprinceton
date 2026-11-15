@@ -176,7 +176,7 @@ describe("The calibration screen that previously trapped the user", () => {
   });
   it("captures low → tracking lost → recovered high and reaches practice", () => {
     holdSpot(150);
-    expect(host.textContent).toContain("Give Luma a little lift!");
+    expect(host.textContent).toContain("Bend your elbow a little.");
     frames(65, false, 1);
     expect(button("Remember this position")).toBeUndefined();
     holdSpot(65);
@@ -201,15 +201,15 @@ describe("The calibration screen that previously trapped the user", () => {
         .querySelector('[aria-label="Automatic position capture"]')
         ?.getAttribute("aria-valuenow"),
     ).toBe("0");
-    expect(host.textContent).toContain("Find your cozy spot.");
+    expect(host.textContent).toContain("Let your arm come down.");
     expect(reset).not.toHaveBeenCalled();
     holdSpot(150);
-    expect(host.textContent).toContain("Give Luma a little lift!");
+    expect(host.textContent).toContain("Bend your elbow a little.");
   });
   it("waits for a different second spot rather than saving the first position twice", () => {
     holdSpot(150);
     frames(150, true, 30);
-    expect(host.textContent).toContain("Give Luma a little lift!");
+    expect(host.textContent).toContain("Bend your elbow a little.");
     expect(host.textContent).not.toContain("Two little moves.");
     expect(reset).not.toHaveBeenCalled();
     holdSpot(65);
@@ -219,7 +219,7 @@ describe("The calibration screen that previously trapped the user", () => {
     holdSpot(150);
     click("Left hand");
     expect(settings.arm).toBe("left");
-    expect(host.textContent).toContain("Find your cozy spot.");
+    expect(host.textContent).toContain("Let your arm come down.");
     expect(button("Remember this position")).toBeUndefined();
   });
   it("offers a configured range but still requires current valid tracking", () => {
@@ -236,7 +236,7 @@ describe("The calibration screen that previously trapped the user", () => {
   it("explains near-identical positions and keeps the demo exit usable", () => {
     holdSpot(95);
     holdSpot(92);
-    expect(host.textContent).toContain("Move softly to your other spot");
+    expect(host.textContent).toContain("Bend your elbow a little.");
     expect(reset).not.toHaveBeenCalled();
     click("Play with buttons");
     expect(onDemo).toHaveBeenCalledOnce();
@@ -244,12 +244,12 @@ describe("The calibration screen that previously trapped the user", () => {
   it("calibrates a softly closed and comfortably open hand without exposing angles to the child", () => {
     settings = { ...settings, exercise: "grip" };
     render();
-    expect(host.textContent).toContain("A soft, sleepy hand.");
+    expect(host.textContent).toContain("Make a soft fist.");
     expect(
       host.querySelector(".child-calibration-visual")?.textContent,
     ).not.toContain("°");
     holdSpot(1.05);
-    expect(host.textContent).toContain("Let your flower say hello!");
+    expect(host.textContent).toContain("Open your hand.");
     holdSpot(2.1);
     expect(reset).not.toHaveBeenCalled();
     frames(1.05);
@@ -270,9 +270,9 @@ describe("The calibration screen that previously trapped the user", () => {
   it("calibrates the butterfly game independently from finger opening", () => {
     settings = { ...settings, exercise: "wrist" };
     render();
-    expect(host.textContent).toContain("A soft, resting hand.");
+    expect(host.textContent).toContain("Rest your hand.");
     holdSpot(12);
-    expect(host.textContent).toContain("Give your butterfly a breeze!");
+    expect(host.textContent).toContain("Tilt your hand up a little.");
     holdSpot(47);
     expect(reset).not.toHaveBeenCalled();
     frames(12);
@@ -294,10 +294,10 @@ describe("The calibration screen that previously trapped the user", () => {
   it("captures comfortable left and right steering spots and proceeds to ship practice", () => {
     settings = { ...settings, exercise: "ship" };
     render();
-    expect(host.textContent).toContain("A little lean to the left.");
+    expect(host.textContent).toContain("Tilt your hand left.");
     expect(button("Left hand")).toBeUndefined();
     holdSpot(-18);
-    expect(host.textContent).toContain("A little lean to the right.");
+    expect(host.textContent).toContain("Tilt your hand right.");
     holdSpot(22);
     expect(reset).not.toHaveBeenCalled();
     frames(-18);

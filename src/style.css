@@ -5159,3 +5159,286 @@ input[type="range"] {
     font-size: 8px;
   }
 }
+
+.read-instruction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 13px;
+  margin: 10px auto 13px;
+  border: 1px solid #d8dfc8;
+  border-radius: 15px;
+  background: #f0f2e2;
+  color: #78916c;
+  font-size: 12px;
+  font-weight: 600;
+}
+.read-instruction:hover {
+  background: #e6ecd6;
+}
+.tune-instruction .read-instruction {
+  margin: 4px 0 10px;
+  font-size: 10px;
+  min-height: 36px;
+}
+.child-setup .calibration-demonstration .movement-guide {
+  max-width: 230px;
+  height: 190px;
+}
+.child-setup .calibration-demonstration > span {
+  font-size: 12px;
+  font-weight: 700;
+}
+@media (max-width: 620px) {
+  .read-instruction {
+    font-size: 11px;
+    min-height: 40px;
+  }
+  .child-setup .calibration-demonstration .movement-guide {
+    height: 135px;
+  }
+  .child-setup .calibration-demonstration > span {
+    font-size: 11px;
+  }
+}
+
+/* A directional instruction shows one movement, then holds the target pose. */
+.grip-up .grip-finger {
+  animation: instruction-open 1.4s ease-in-out both;
+}
+.grip-down .grip-finger {
+  animation: instruction-close 1.4s ease-in-out both;
+}
+.grip-up .grip-thumb {
+  animation: instruction-thumb-open 1.4s ease-in-out both;
+}
+.grip-down .grip-thumb {
+  animation: instruction-thumb-close 1.4s ease-in-out both;
+}
+.grip-up .guide-flower-petals {
+  animation: instruction-bloom 1.4s ease-in-out both;
+}
+.grip-down .guide-flower-petals {
+  animation: instruction-bud 1.4s ease-in-out both;
+}
+.guide-up .reach-arm {
+  animation: instruction-reach 1.6s ease-in-out both;
+}
+.guide-down .reach-arm {
+  animation: instruction-return 1.6s ease-in-out both;
+}
+.tilt-up .tilting-hand {
+  animation: instruction-tilt 1.6s ease-in-out both !important;
+}
+.tilt-down .tilting-hand {
+  animation: instruction-rest 1.6s ease-in-out both !important;
+}
+.tilt-up .guide-butterfly {
+  animation: instruction-butterfly-up 1.6s ease-in-out both !important;
+}
+.tilt-down .guide-butterfly {
+  animation: instruction-butterfly-down 1.6s ease-in-out both !important;
+}
+.steering-up .steering-hand {
+  animation: instruction-right 1.6s ease-in-out both;
+}
+.steering-down .steering-hand {
+  animation: instruction-left 1.6s ease-in-out both;
+}
+.steering-up .guide-ship {
+  animation: instruction-sail-right 1.6s ease-in-out both;
+}
+.steering-down .guide-ship {
+  animation: instruction-sail-left 1.6s ease-in-out both;
+}
+@keyframes instruction-open {
+  from {
+    transform: scaleY(0.18);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+@keyframes instruction-close {
+  from {
+    transform: scaleY(1);
+  }
+  to {
+    transform: scaleY(0.18);
+  }
+}
+@keyframes instruction-thumb-open {
+  from {
+    transform: rotate(48deg);
+  }
+  to {
+    transform: rotate(0);
+  }
+}
+@keyframes instruction-thumb-close {
+  from {
+    transform: rotate(0);
+  }
+  to {
+    transform: rotate(48deg);
+  }
+}
+@keyframes instruction-bloom {
+  from {
+    transform: scale(0.35);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+@keyframes instruction-bud {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(0.35);
+  }
+}
+@keyframes instruction-reach {
+  from {
+    transform: rotate(0);
+  }
+  to {
+    transform: rotate(95deg);
+  }
+}
+@keyframes instruction-return {
+  from {
+    transform: rotate(95deg);
+  }
+  to {
+    transform: rotate(0);
+  }
+}
+@keyframes instruction-tilt {
+  from {
+    transform: rotate(0);
+  }
+  to {
+    transform: rotate(-34deg);
+  }
+}
+@keyframes instruction-rest {
+  from {
+    transform: rotate(-34deg);
+  }
+  to {
+    transform: rotate(0);
+  }
+}
+@keyframes instruction-butterfly-up {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-24px);
+  }
+}
+@keyframes instruction-butterfly-down {
+  from {
+    transform: translateY(-24px);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes instruction-right {
+  from {
+    transform: rotate(-24deg);
+  }
+  to {
+    transform: rotate(24deg);
+  }
+}
+@keyframes instruction-left {
+  from {
+    transform: rotate(24deg);
+  }
+  to {
+    transform: rotate(-24deg);
+  }
+}
+@keyframes instruction-sail-right {
+  from {
+    transform: translateX(-63px);
+  }
+  to {
+    transform: translateX(63px);
+  }
+}
+@keyframes instruction-sail-left {
+  from {
+    transform: translateX(63px);
+  }
+  to {
+    transform: translateX(-63px);
+  }
+}
+.guide-up .illustrated-arm {
+  transform: rotate(-23deg);
+  animation: instruction-bend 1.6s ease-in-out both;
+}
+.guide-down .illustrated-arm {
+  transform: rotate(20deg);
+  animation: instruction-lower 1.6s ease-in-out both;
+}
+.guide-low .illustrated-arm {
+  animation: none;
+  transform: rotate(20deg);
+}
+.guide-high .illustrated-arm {
+  animation: none;
+  transform: rotate(-23deg);
+}
+.tilt-up .guide-butterfly {
+  transform: translateY(-24px);
+}
+@keyframes instruction-bend {
+  from {
+    transform: rotate(20deg);
+  }
+  to {
+    transform: rotate(-23deg);
+  }
+}
+@keyframes instruction-lower {
+  from {
+    transform: rotate(-23deg);
+  }
+  to {
+    transform: rotate(20deg);
+  }
+}
+.reduced-motion .tilt-up .tilting-hand,
+.reduced-motion .tilt-down .tilting-hand,
+.reduced-motion .tilt-up .guide-butterfly,
+.reduced-motion .tilt-down .guide-butterfly {
+  animation: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .guide-up .reach-arm,
+  .guide-down .reach-arm,
+  .grip-up .grip-finger,
+  .grip-down .grip-finger,
+  .grip-up .grip-thumb,
+  .grip-down .grip-thumb,
+  .grip-up .guide-flower-petals,
+  .grip-down .guide-flower-petals,
+  .tilt-up .tilting-hand,
+  .tilt-down .tilting-hand,
+  .tilt-up .guide-butterfly,
+  .tilt-down .guide-butterfly,
+  .steering-up .steering-hand,
+  .steering-down .steering-hand,
+  .steering-up .guide-ship,
+  .steering-down .guide-ship {
+    animation: none !important;
+  }
+}

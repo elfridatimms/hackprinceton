@@ -1,3 +1,5 @@
+import { childInstructions } from "../movement/instructions";
+import { ReadInstruction } from "./ReadInstruction";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
@@ -90,7 +92,10 @@ export function PersonalTune({
       if (learned) setProfile(learned);
     }
   }, [f, now, profile, exercise, arm, range, holds]);
+  const instruction = childInstructions[exercise];
   const phase = capture.current.counter.phase;
+  const currentInstruction =
+    phase === "seek-high" ? instruction.high : instruction.low;
   const direction = phase === "seek-high" ? "up" : "down";
   const position =
     fresh && value !== null
@@ -109,7 +114,7 @@ export function PersonalTune({
       <p>
         {profile
           ? "Luma has learned your comfy movement for this adventure."
-          : "Follow the little picture, there and back. Twice is lovely. Take all the time you need."}
+          : "Copy the picture. We’ll do it twice together."}
       </p>
       <TrackingScan
         tracking={tracking}
@@ -143,21 +148,25 @@ export function PersonalTune({
         </div>
       ) : (
         <div className="tune-instruction">
-          <MovementGuide exercise={exercise} direction={direction} compact />
+          <MovementGuide
+            key={direction}
+            exercise={exercise}
+            direction={direction}
+            compact
+          />
           <div>
             <span className="scan-small-label">
               {Math.min(count, 2)} OF 2 LITTLE MOVES
             </span>
-            <h3>
-              {phase === "seek-high"
-                ? exercises[exercise].up
-                : exercises[exercise].down}
-            </h3>
+            <h3>{currentInstruction}</h3>
             <p>
               {fresh
-                ? "A little pause at each end helps Luma learn."
+                ? "Hold still for a moment. Then follow the next picture."
                 : tracking.frame.message}
             </p>
+            <ReadInstruction
+              text={`${currentInstruction} ${instruction.tip} Hold still for a moment.`}
+            />
             <div
               className="tune-move-track"
               aria-label="Live position within your comfortable range"

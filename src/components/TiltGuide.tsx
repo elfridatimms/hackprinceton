@@ -20,7 +20,10 @@ export function TiltGuide({
           className="tilting-hand"
           style={{
             transformOrigin: "129px 150px",
-            transform: direction === "high" ? "rotate(-34deg)" : undefined,
+            transform:
+              direction === "high" || direction === "up"
+                ? "rotate(-34deg)"
+                : undefined,
           }}
         >
           <path
