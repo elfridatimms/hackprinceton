@@ -104,11 +104,12 @@ export function Dragon({
   useFrame(({ clock }, dt) => {
     const w = world.current,
       t = clock.elapsedTime;
+    root.current!.visible = w.exercise === "elbow" || w.exercise === "reach";
     const rest = w.phase === "paused" || w.waiting;
-    const targetY = welcome ? 1.65 : rest ? 1.2 : -0.3 + w.position * 4.2;
+    const targetY = welcome ? 1.65 : -0.3 + w.position * 4.2;
     const r = root.current!;
     r.position.y =
-      THREE.MathUtils.damp(r.position.y, targetY, 4, dt) +
+      THREE.MathUtils.damp(r.position.y, targetY, 12, dt) +
       (w.reduced ? 0 : Math.sin(t * 2) * 0.0015);
     r.rotation.z = THREE.MathUtils.damp(
       r.rotation.z,
@@ -124,6 +125,8 @@ export function Dragon({
     left.current!.rotation.y = flap;
     right.current!.rotation.y = -flap;
     const delight = performance.now() / 1000 - w.collectAt < 0.8;
+    if (!w.reduced && performance.now() / 1000 - (w.bumpAt ?? -100) < 0.65)
+      r.rotation.z += Math.sin(t * 25) * 0.025;
     head.current!.rotation.z =
       Math.sin(t * 0.9) * 0.035 + (delight ? -0.12 : 0);
     const blink = t % 5.7;

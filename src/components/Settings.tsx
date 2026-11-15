@@ -40,7 +40,7 @@ export function Settings({
     grip = draft.exercise === "grip",
     wrist = draft.exercise === "wrist",
     ship = draft.exercise === "ship",
-    handMode = grip || wrist || ship;
+    handMode = grip || reach;
   const range = getMovementRange(draft);
   const valid = validMovementRange(draft.exercise, range.lower, range.upper);
   return (
@@ -112,7 +112,7 @@ export function Settings({
           </label>
           <label>
             {ship
-              ? "Left steering lean"
+              ? "Forearm turn left"
               : wrist
                 ? "Resting hand tilt"
                 : grip
@@ -138,7 +138,7 @@ export function Settings({
           </label>
           <label>
             {ship
-              ? "Right steering lean"
+              ? "Forearm turn right"
               : wrist
                 ? "Comfortably raised tilt"
                 : grip
@@ -172,7 +172,7 @@ export function Settings({
                 : grip
                   ? "The open hand level must be at least 0.2 above the closed level (0–5)."
                   : reach
-                    ? "The raised hand level must be at least 0.12 above the resting level (−4 to 4)."
+                    ? "Use two hand heights at least 0.08 apart within the camera picture (0–1)."
                     : "Use a lower-position angle at least 5° larger than the upper-position angle (10–180°)."}
           </p>
         )}

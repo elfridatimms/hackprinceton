@@ -20,7 +20,7 @@ export class QuickPracticeCapture {
   constructor(readonly exercise: Exercise) {}
   invalidate() {
     this.motion.counter.invalidate();
-    if (!this.range) this.samples = [];
+    this.samples = [];
   }
   update(frame: TrackingFrame, now: number) {
     const value = movementValue(frame, this.exercise),
@@ -41,12 +41,8 @@ export class QuickPracticeCapture {
     if (this.lastAt !== null && frame.at - this.lastAt > FRAME_MAX_AGE_MS)
       this.invalidate();
     this.lastAt = frame.at;
-    if (this.range) {
-      this.motion.update(frame, this.exercise, this.range, now);
-      return;
-    }
     this.samples.push({ value, raw: frame.rawValue ?? value, at: frame.at });
-    if (this.samples.length > 300) this.samples.shift();
+    if (this.samples.length > 1800) this.samples.shift();
     if (this.samples.length < 20) return;
     const values = this.samples.map((s) => s.value).sort((a, b) => a - b),
       low = values[4],
@@ -64,6 +60,7 @@ export class QuickPracticeCapture {
       group.length >= 5 && group.at(-1)!.at - group[0].at >= 220;
     if (!supported(lowSamples) || !supported(highSamples)) return;
     this.range = range;
+    this.motion = new PersonalMotionCapture();
     // Replay only the real, timestamped observations already seen during this attempt.
     for (const sample of this.samples) {
       const f: TrackingFrame = {

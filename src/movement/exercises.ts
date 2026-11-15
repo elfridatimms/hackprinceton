@@ -31,7 +31,8 @@ export const exercises = {
     description: "A little lift. A little light.",
     up: childInstructions.reach.high,
     down: childInstructions.reach.low,
-    camera: "Face the camera. Keep both shoulders and your hand in view.",
+    camera:
+      "Show one hand to the camera. Lift and lower your hand in the picture.",
   },
   elbow: {
     tab: "Dragon Flight",
@@ -63,14 +64,14 @@ export const exercises = {
     tab: "Pirate Ship",
     hero: ["Little captains.", "Big adventures."],
     intro: "Ahoy! A little ship is ready to sail.",
-    promise: "Tilt your hand. Sail to the sparkling islands.",
+    promise: "Turn your arm. Steer to the sparkling islands.",
     title: "Steer a little pirate ship",
-    short: "Tilt. Sail. Discover!",
-    description: "Gentle hands. Happy little voyages.",
+    short: "Turn. Sail. Discover!",
+    description: "Little turns. Happy little voyages.",
     up: childInstructions.ship.high,
     down: childInstructions.ship.low,
     camera:
-      "Show one palm to the camera with fingers pointing up. Gently lean your hand left and right, like a little wave. Keep your wrist and knuckles visible.",
+      "Face the camera with your elbow bent and hand up. Keep the elbow in one place and turn your forearm left and right like a steering wheel.",
   },
 } as const;
 /** Wrist height relative to the selected shoulder, in shoulder-width units. This is a 2D game input, not a clinical measure. */
@@ -232,8 +233,88 @@ export function handSteering(
   const lean = (Math.atan2(dx, dy) * 180) / Math.PI;
   return Math.abs(lean) <= 75 ? lean : null;
 }
+/** Points displayed by CameraFeed; wrist also includes posePoints for the forearm. */
 export const isHandExercise = (exercise: Exercise) =>
-  exercise === "grip" || exercise === "wrist" || exercise === "ship";
+  exercise === "grip" || exercise === "reach" || exercise === "wrist";
+/** Direct palm tracking needs no full-body pose or visible shoulders. */
+export function cameraHandHeight(points: Landmark[]): number | null {
+  const wrist = points[0],
+    middle = points[9];
+  if (
+    !wrist ||
+    !middle ||
+    ![wrist, middle].every(
+      (p) =>
+        Number.isFinite(p.x) &&
+        Number.isFinite(p.y) &&
+        p.x >= 0 &&
+        p.x <= 1 &&
+        p.y >= 0 &&
+        p.y <= 1,
+    )
+  )
+    return null;
+  return 1 - wrist.y;
+}
+/** Forearm lean about the elbow in the mirrored picture. No wrist/palm rotation is required. */
+export function forearmSteering(
+  points: Landmark[],
+  arm: Arm,
+  aspect: number,
+): number | null {
+  const elbow = points[arm === "left" ? 13 : 14],
+    wrist = points[arm === "left" ? 15 : 16];
+  if (
+    ![elbow, wrist].every(usableLandmark) ||
+    !Number.isFinite(aspect) ||
+    aspect <= 0
+  )
+    return null;
+  const x = -(wrist.x - elbow.x) * aspect,
+    y = elbow.y - wrist.y;
+  if (Math.hypot(x, y) < 0.06 || y <= 0.015) return null;
+  const angle = (Math.atan2(x, y) * 180) / Math.PI;
+  return Math.abs(angle) <= 75 ? angle : null;
+}
+/** Signed hand bend relative to the visible forearm. Moving the whole arm does not bend the wrist. */
+export function wristBend(
+  pose: Landmark[],
+  hand: Landmark[],
+  arm: Arm,
+  aspect: number,
+): number | null {
+  const elbow = pose[arm === "left" ? 13 : 14],
+    w = hand[0],
+    m = hand[9];
+  if (
+    !usableLandmark(elbow) ||
+    !w ||
+    !m ||
+    !Number.isFinite(aspect) ||
+    aspect <= 0 ||
+    ![w, m].every(
+      (p) =>
+        Number.isFinite(p.x) &&
+        Number.isFinite(p.y) &&
+        p.x >= 0 &&
+        p.x <= 1 &&
+        p.y >= 0 &&
+        p.y <= 1,
+    )
+  )
+    return null;
+  const fx = (w.x - elbow.x) * aspect,
+    fy = w.y - elbow.y,
+    hx = (m.x - w.x) * aspect,
+    hy = m.y - w.y;
+  const fl = Math.hypot(fx, fy),
+    hl = Math.hypot(hx, hy);
+  if (fl < 0.06 || hl < 0.025 || Math.abs(fx) < fl * 0.25) return null;
+  const angle =
+    (-Math.sign(fx) * Math.atan2(fx * hy - fy * hx, fx * hx + fy * hy) * 180) /
+    Math.PI;
+  return angle >= -75 && angle <= 90 ? angle : null;
+}
 export const exerciseOrder: Exercise[] = [
   "grip",
   "reach",
@@ -243,7 +324,7 @@ export const exerciseOrder: Exercise[] = [
 ];
 export const movementLimits = {
   grip: { min: 0, max: 5, delta: 0.2, spread: 0.16, precision: 1000 },
-  reach: { min: -4, max: 4, delta: 0.12, spread: 0.1, precision: 1000 },
+  reach: { min: 0, max: 1, delta: 0.08, spread: 0.1, precision: 1000 },
   elbow: { min: 10, max: 180, delta: 5, spread: 6, precision: 10 },
   wrist: { min: -90, max: 90, delta: 5, spread: 6, precision: 10 },
   ship: { min: -75, max: 75, delta: 5, spread: 6, precision: 10 },

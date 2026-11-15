@@ -207,7 +207,7 @@ describe("The short camera start without comfy-spot screens", () => {
     ["elbow", 150, 65],
     ["wrist", 12, 47],
     ["ship", -18, 22],
-    ["reach", -0.7, 0.1],
+    ["reach", 0.2, 0.8],
   ] as const)(
     "learns the %s range during the same brief attempt",
     (exercise, low, high) => {

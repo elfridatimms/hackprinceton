@@ -164,7 +164,10 @@ export function TrackingScan({
             </svg>
           </div>
           <div className="scan-engine">
-            <strong>{hand ? "Hand Landmarker" : "Pose Landmarker"}</strong>
+            <strong>
+              {tracking.diagnostics?.engine ??
+                (hand ? "Hand tracker" : "Arm tracker")}
+            </strong>
             <span>
               {fresh ? "Following your movement" : "Waiting for a clear view"}
             </span>

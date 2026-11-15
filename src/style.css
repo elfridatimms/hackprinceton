@@ -5910,3 +5910,170 @@ input[type="range"] {
     height: 185px;
   }
 }
+
+/* Game goals and the real-input ship's wheel. */
+.game-mission {
+  position: absolute;
+  left: 24px;
+  bottom: 25px;
+  display: grid;
+  gap: 6px;
+  padding: 15px 19px;
+  border: 1px solid #f8f2d5aa;
+  border-radius: 19px;
+  background: #faf8e9dc;
+  box-shadow: 0 6px 25px #395e4710;
+  pointer-events: none;
+  max-width: 270px;
+  animation: mission-arrives 0.6s ease-out;
+}
+.game-mission > span,
+.captain-helm > span {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1.7px;
+  color: #899567;
+}
+.game-mission strong {
+  font-family: var(--font-display, "Nunito", sans-serif);
+  font-size: 18px;
+  color: #31594d;
+  line-height: 1.25;
+}
+.game-mission small {
+  font-size: 11px;
+  line-height: 1.6;
+  color: #7a8c73;
+}
+.captain-helm {
+  position: absolute;
+  bottom: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  padding: 10px 18px 9px;
+  border-radius: 28px;
+  background: #fbf6e8dc;
+  border: 1px solid #e5d6b5bb;
+  box-shadow: 0 5px 30px #557e6e14;
+  pointer-events: none;
+}
+.captain-helm svg {
+  width: 104px;
+  height: 104px;
+  filter: drop-shadow(0 4px 2px #856a3622);
+}
+.captain-helm .helm-dial {
+  transition: transform 90ms linear;
+}
+.captain-helm small {
+  color: #8a805f;
+  font-size: 10px;
+}
+.helm-waiting {
+  opacity: 0.55;
+}
+.steering-loop .steering-wheel {
+  animation: helm-turn 5s ease-in-out infinite;
+}
+.steering-up .steering-wheel {
+  transform: rotate(55deg);
+  transition: transform 1.6s ease-in-out;
+}
+.steering-down .steering-wheel {
+  transform: rotate(-55deg);
+  transition: transform 1.6s ease-in-out;
+}
+@keyframes helm-turn {
+  0%,
+  100% {
+    transform: rotate(-55deg);
+  }
+  42%,
+  58% {
+    transform: rotate(55deg);
+  }
+}
+@keyframes mission-arrives {
+  from {
+    opacity: 0;
+    translate: 0 10px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+@media (max-width: 620px) {
+  .game-mission {
+    left: 12px;
+    bottom: 12px;
+    padding: 10px 13px;
+    max-width: 210px;
+  }
+  .game-mission strong {
+    font-size: 15px;
+  }
+  .game-mission small {
+    font-size: 10px;
+  }
+  .captain-helm svg {
+    width: 76px;
+    height: 76px;
+  }
+  .captain-helm {
+    bottom: 54px;
+    padding: 8px 11px;
+  }
+  .captain-helm > span {
+    font-size: 7px;
+  }
+  .captain-helm small {
+    font-size: 8px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .steering-wheel,
+  .game-mission {
+    animation: none !important;
+  }
+}
+.reduced-motion .steering-wheel,
+.reduced-motion .game-mission {
+  animation: none !important;
+}
+
+.firefly-score strong {
+  animation: score-spark 0.5s ease-out;
+}
+@keyframes score-spark {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.4);
+    color: #c39744;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.reduced-motion .firefly-score strong {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .firefly-score strong {
+    animation: none;
+  }
+}
+@media (max-width: 620px) {
+  .pirate-voyage {
+    top: 104px;
+    bottom: auto;
+  }
+  .game-mission {
+    bottom: 58px;
+  }
+}

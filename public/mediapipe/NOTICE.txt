@@ -10,3 +10,8 @@ No camera frames are uploaded to these sources during play.
 MediaPipe Hand Landmarker (Apache License 2.0)
 https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task
 Bundled license: LICENSE.txt
+
+MediaPipe Holistic 0.5.1675471629 (Apache License 2.0)
+Locally bundled engine/assets from https://github.com/elfridatimms/final-thesis-demo/tree/8c8f448/public/holistic
+Holistic options and arm visibility hysteresis adapted from that repository's src/main.js.
+Copyright The MediaPipe Authors / Google LLC. See LICENSE.txt.

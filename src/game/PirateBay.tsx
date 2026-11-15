@@ -108,7 +108,8 @@ function ToyShip({
   world: RefObject<WorldState>;
   welcome: boolean;
 }) {
-  const ship = useRef<THREE.Group>(null);
+  const ship = useRef<THREE.Group>(null),
+    flag = useRef<THREE.Mesh>(null);
   const sail = useMemo(() => {
     const s = new THREE.Shape();
     s.moveTo(0.08, 0.35);
@@ -132,6 +133,10 @@ function ToyShip({
     const live =
       (w.phase === "playing" || w.phase === "practice") && !w.waiting;
     ship.current.position.x = welcome ? 0 : (w.position - 0.5) * 6.4;
+    if (flag.current && !w.reduced && (live || welcome)) {
+      flag.current.scale.x = 0.92 + Math.sin(clock.elapsedTime * 5) * 0.08;
+      flag.current.rotation.y = Math.sin(clock.elapsedTime * 3) * 0.12;
+    }
     if (live || welcome) {
       ship.current.position.y =
         -0.55 + (w.reduced ? 0 : Math.sin(clock.elapsedTime * 1.6) * 0.055);
@@ -187,7 +192,7 @@ function ToyShip({
         <circleGeometry args={[0.22, 5]} />
         <meshStandardMaterial color="#e4bc75" />
       </mesh>
-      <mesh position={[-0.35, 2.35, 0]}>
+      <mesh ref={flag} position={[-0.35, 2.35, 0]}>
         <boxGeometry args={[0.65, 0.35, 0.025]} />
         <meshStandardMaterial color="#658f8a" />
       </mesh>

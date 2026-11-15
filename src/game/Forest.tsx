@@ -1,8 +1,10 @@
+import { SkyGates } from "./SkyGates";
 import { PirateBay } from "./PirateBay";
 import type { Exercise } from "../movement/exercises";
 import { GameWorldObjects } from "./GameWorldObjects";
 import { MagicFlower } from "./MagicFlower";
 import {
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -362,7 +364,7 @@ function Fireflies({
   onCollect: () => void;
 }) {
   const groups = useRef<THREE.Group>(null);
-  const lastProgress = useRef(0);
+  const previousPhase = useRef(world.current.phase);
   const flies = useMemo(() => {
     const r = rng(93);
     return Array.from({ length: 26 }, (_, i) => ({
@@ -376,29 +378,33 @@ function Fireflies({
   }, [welcome]);
   useFrame(({ clock }, dt) => {
     const t = clock.elapsedTime,
-      w = world.current,
-      delta = Math.max(0, w.progress - lastProgress.current);
-    lastProgress.current = w.progress;
+      w = world.current;
     if (
       w.phase === "welcome" ||
-      (w.progress < 0.01 && flies.some((f) => f.collected))
+      (w.phase === "practice" && previousPhase.current !== "practice")
     )
       flies.forEach((f) => {
         f.collected = false;
         f.delay = 0;
       });
+    previousPhase.current = w.phase;
     groups.current?.children.forEach((g, i) => {
       const f = flies[i];
+      if (!welcome && w.exercise !== "reach") {
+        g.visible = false;
+        return;
+      }
+      g.visible = true;
       if (!welcome && w.phase === "playing" && !w.waiting) {
-        f.x -= delta * 80 * w.speed;
+        f.x -= Math.min(dt, 0.06) * 1.5 * w.speed;
         if (f.x < -9) {
           f.x = 6 + (i % 4);
           f.collected = false;
         }
         if (
           !f.collected &&
-          Math.abs(f.x + 3) < 1.1 &&
-          Math.abs(f.y - (-0.3 + w.position * 4.2)) < 0.92
+          Math.abs(f.x + 3) < 0.9 &&
+          Math.abs(f.y - (-0.3 + w.position * 4.2)) < 0.7
         ) {
           f.collected = true;
           f.delay = t;
@@ -489,7 +495,11 @@ function CollectionSparkles({ world }: { world: React.RefObject<WorldState> }) {
     const w = world.current;
     const age = performance.now() / 1000 - w.collectAt;
     particles.current!.visible = age >= 0 && age < 0.65;
-    particles.current!.position.set(-2.8, -0.4 + w.position * 4.2, 3);
+    particles.current!.position.set(
+      w.exercise === "wrist" ? -3 + w.position * 6 : -2.8,
+      w.exercise === "wrist" ? 0.3 + w.position * 2.8 : -0.4 + w.position * 4.2,
+      w.exercise === "wrist" ? 4.4 : 3,
+    );
     particles.current!.children.forEach((child, i) => {
       const a = (i / 12) * Math.PI * 2;
       const radius = age * (w.reduced ? 0.3 : 1.3);
@@ -680,7 +690,8 @@ function Scenery({
           )}
       </group>
       <MagicFlower world={world} welcome={welcome} />
-      <GameWorldObjects world={world} welcome={welcome} />
+      <GameWorldObjects world={world} welcome={welcome} onCollect={onCollect} />
+      <SkyGates world={world} welcome={welcome} onCollect={onCollect} />
       <AncientTree world={world} />
       <CollectionSparkles world={world} />
       <Dragon world={world} welcome={welcome} />
@@ -760,6 +771,19 @@ function Framing({ welcome, ship }: { welcome: boolean; ship: boolean }) {
   });
   return null;
 }
+/** Keep a steady 30 Hz scene budget so camera inference can share the GPU. */
+function RenderCadence() {
+  const invalidate = useThree((s) => s.invalidate);
+  useEffect(() => {
+    const tick = () => {
+      if (!document.hidden) invalidate();
+    };
+    const timer = setInterval(tick, 1000 / 30);
+    tick();
+    return () => clearInterval(timer);
+  }, [invalidate]);
+  return null;
+}
 export const Forest = memo(function Forest({
   world,
   welcome = false,
@@ -776,8 +800,9 @@ export const Forest = memo(function Forest({
       <Canvas
         style={{ position: "absolute", inset: 0 }}
         orthographic
+        frameloop="demand"
         camera={{ position: [0, 5, 22], zoom: 54, near: 0.1, far: 65 }}
-        dpr={[1, 1.65]}
+        dpr={[1, 1.25]}
         gl={{
           antialias: true,
           powerPreference: "high-performance",
@@ -789,6 +814,7 @@ export const Forest = memo(function Forest({
           gl.toneMappingExposure = 1;
         }}
       >
+        <RenderCadence />
         <Framing welcome={welcome} ship={exercise === "ship"} />
         {exercise === "ship" ? (
           <PirateBay world={world} welcome={welcome} onCollect={onCollect} />

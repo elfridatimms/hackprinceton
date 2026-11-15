@@ -5,16 +5,19 @@ import type { WorldState } from "./session";
 export function GameWorldObjects({
   world,
   welcome,
+  onCollect,
 }: {
   world: React.RefObject<WorldState>;
   welcome: boolean;
+  onCollect: () => void;
 }) {
   const butterfly = useRef<THREE.Group>(null),
     left = useRef<THREE.Group>(null),
     right = useRef<THREE.Group>(null),
     jar = useRef<THREE.Group>(null),
     jarLights = useRef<THREE.Group>(null),
-    rings = useRef<THREE.Group>(null);
+    flowers = useRef<THREE.Group>(null);
+  const nectar = useRef({ target: 0, dwell: 0 });
   const antenna = useMemo(
     () =>
       new THREE.CatmullRomCurve3([
@@ -29,15 +32,39 @@ export function GameWorldObjects({
       t = clock.elapsedTime;
     butterfly.current!.visible = w.exercise === "wrist";
     jar.current!.visible = w.exercise === "reach";
-    rings.current!.visible = w.exercise === "elbow";
+    flowers.current!.visible = w.exercise === "wrist";
+    if (w.phase === "welcome" || w.phase === "practice") {
+      nectar.current.target = 0;
+      nectar.current.dwell = 0;
+    }
+    if (
+      w.exercise === "wrist" &&
+      w.phase === "playing" &&
+      !w.waiting &&
+      Math.abs(w.position - (nectar.current.target === 0 ? 0.15 : 0.85)) < 0.13
+    ) {
+      nectar.current.dwell += Math.min(dt, 0.06);
+      if (nectar.current.dwell > 0.3) {
+        onCollect();
+        nectar.current.target = 1 - nectar.current.target;
+        nectar.current.dwell = 0;
+      }
+    } else nectar.current.dwell = 0;
+    flowers.current!.children.forEach((f, i) => {
+      f.scale.setScalar(
+        i === nectar.current.target
+          ? 1.05 + (w.reduced ? 0 : Math.sin(t * 3) * 0.05)
+          : 0.8,
+      );
+    });
     const p = welcome ? 0.55 : w.position;
-    const flutter = w.reduced ? 0 : Math.sin(t * (w.waiting ? 2.2 : 6)) * 0.14;
+    const flutter = w.reduced ? 0 : Math.sin(t * (w.waiting ? 2.2 : 11)) * 0.48;
     left.current!.rotation.y = -0.25 - p * 0.5 + flutter;
     right.current!.rotation.y = 0.25 + p * 0.5 - flutter;
     butterfly.current!.position.y = THREE.MathUtils.damp(
       butterfly.current!.position.y,
-      w.celebrating ? 3 : welcome ? 1.2 : -0.1 + p * 3.2,
-      4,
+      w.celebrating ? 3 : welcome ? 1.2 : 0.3 + p * 2.8,
+      10,
       dt,
     );
     butterfly.current!.rotation.z = w.reduced ? 0 : Math.sin(t * 0.8) * 0.06;
@@ -45,7 +72,7 @@ export function GameWorldObjects({
       ? 4 + Math.sin(t * 0.7)
       : welcome
         ? 5.3
-        : 1.5 + Math.sin(t * 0.45) * 0.15;
+        : -3 + p * 6;
     jarLights.current!.children.forEach((child, i) => {
       child.visible = i < Math.min(12, w.fireflies);
       child.position.set(
@@ -54,20 +81,46 @@ export function GameWorldObjects({
         Math.cos(i * 2.4 + t * 0.3) * 0.3,
       );
     });
-    rings.current!.children.forEach((ring, i) => {
-      ring.position.x = welcome ? 6 + i * 3 : 5 + i * 5 - w.progress * 17;
-      ring.position.y =
-        0.6 +
-        Math.sin(i * 1.8) * 1.7 +
-        (w.reduced ? 0 : Math.sin(t * 0.6 + i) * 0.07);
-    });
   });
   return (
     <>
+      <group ref={flowers}>
+        {[0.15, 0.85].map((p, i) => (
+          <group key={i} position={[-3 + p * 6, 0.3 + p * 2.8, 3.6]}>
+            {Array.from({ length: 6 }, (_, n) => (
+              <mesh
+                key={n}
+                position={[
+                  Math.cos((n * Math.PI) / 3) * 0.32,
+                  Math.sin((n * Math.PI) / 3) * 0.32,
+                  0,
+                ]}
+                scale={[0.24, 0.35, 0.06]}
+                rotation={[0, 0, (n * Math.PI) / 3 - Math.PI / 2]}
+              >
+                <sphereGeometry args={[1, 18, 12]} />
+                <meshStandardMaterial color={i ? "#ecc3d0" : "#f1d2a0"} />
+              </mesh>
+            ))}
+            <mesh position={[0, 0, 0.05]}>
+              <sphereGeometry args={[0.2, 16, 12]} />
+              <meshStandardMaterial
+                color="#e4b966"
+                emissive="#efc66f"
+                emissiveIntensity={0.3}
+              />
+            </mesh>
+            <mesh position={[0, 0, -0.06]}>
+              <torusGeometry args={[0.7, 0.018, 8, 32]} />
+              <meshBasicMaterial color="#f5e3af" transparent opacity={0.6} />
+            </mesh>
+          </group>
+        ))}
+      </group>
       <group
         ref={butterfly}
-        position={[1.5, 1.5, 3.6]}
-        scale={welcome ? 0.8 : 1.15}
+        position={[1.5, 1.5, 4.2]}
+        scale={welcome ? 0.8 : 0.62}
       >
         <group ref={left}>
           {[-1, 1].map((half, i) => (
@@ -179,42 +232,6 @@ export function GameWorldObjects({
             </group>
           ))}
         </group>
-      </group>
-      <group ref={rings}>
-        {[0, 1, 2].map((i) => (
-          <group key={i} position={[5 + i * 5, 1, 1.5]}>
-            <mesh>
-              <torusGeometry args={[0.8, 0.065, 12, 48]} />
-              <meshStandardMaterial
-                color="#e2c57d"
-                roughness={0.6}
-                emissive="#c4a45d"
-                emissiveIntensity={0.08}
-              />
-            </mesh>
-            {[-1, 0, 1].map((x, j) => (
-              <mesh
-                key={j}
-                position={[x * 0.5, -0.88, 0]}
-                scale={[0.53, 0.23, 0.3]}
-              >
-                <sphereGeometry args={[1, 24, 16]} />
-                <meshStandardMaterial
-                  color={j === 1 ? "#edf0de" : "#dce5d2"}
-                  roughness={1}
-                />
-              </mesh>
-            ))}
-            <mesh position={[0, 0.8, 0.02]} scale={[0.13, 0.18, 0.08]}>
-              <sphereGeometry args={[1, 16, 12]} />
-              <meshStandardMaterial
-                color="#f6dea1"
-                emissive="#e3c073"
-                emissiveIntensity={0.2}
-              />
-            </mesh>
-          </group>
-        ))}
       </group>
     </>
   );

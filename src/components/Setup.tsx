@@ -40,6 +40,7 @@ export function Setup({
     setSettings({
       ...applyMovementRange(settings, range.lower, range.upper),
       personalization: profile,
+      arm: profile?.arm ?? settings.arm,
       smoothing: profile?.smoothing ?? settings.smoothing,
     });
     session.reset("playing");

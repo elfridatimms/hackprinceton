@@ -58,28 +58,40 @@ export const defaultSettings: Settings = {
   personalization: null,
   gripLower: 1.1,
   gripUpper: 2.2,
-  tiltLower: 10,
-  tiltUpper: 55,
+  tiltLower: 0,
+  tiltUpper: 40,
   shipLower: -25,
   shipUpper: 25,
-  reachLower: -1,
-  reachUpper: 0.1,
+  reachLower: 0.2,
+  reachUpper: 0.8,
   arm: "right",
   lower: 150,
   upper: 65,
   target: 8,
   speed: 1,
-  smoothing: 0.22,
+  smoothing: 0.12,
   muted: true,
   reducedMotion: false,
   saveSummaries: false,
 };
 export function loadSettings(): Settings {
   try {
+    const stored = JSON.parse(localStorage.getItem("luma-settings") ?? "{}");
     return {
       ...defaultSettings,
       reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches,
-      ...JSON.parse(localStorage.getItem("luma-settings") ?? "{}"),
+      ...stored,
+      ...(stored.inputVersion === 2
+        ? {}
+        : {
+            reachLower: 0.2,
+            reachUpper: 0.8,
+            tiltLower: 0,
+            tiltUpper: 40,
+            shipLower: -25,
+            shipUpper: 25,
+            smoothing: 0.12,
+          }),
       personalization: null,
     };
   } catch {
@@ -87,6 +99,7 @@ export function loadSettings(): Settings {
   }
 }
 export type WorldState = {
+  bumpAt?: number;
   exercise?: Exercise;
   celebrating: boolean;
   position: number;
@@ -168,6 +181,7 @@ export function useSession(
     world.current.progress = 0;
     world.current.celebrating = false;
     world.current.collectAt = -100;
+    world.current.bumpAt = -100;
     world.current.fireflies = 0;
     setCycles(0);
     setSeconds(0);

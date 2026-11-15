@@ -2,66 +2,93 @@
 import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-const vision = vi.hoisted(() => ({
+const engine = vi.hoisted(() => ({
   create: vi.fn(),
-  handCreate: vi.fn(),
-  resolve: vi.fn(),
+  detect: vi.fn(),
+  close: vi.fn(),
 }));
-vi.mock("@mediapipe/tasks-vision", () => ({
-  FilesetResolver: { forVisionTasks: vision.resolve },
-  PoseLandmarker: { createFromOptions: vision.create },
-  HandLandmarker: { createFromOptions: vision.handCreate },
+vi.mock("../src/movement/trackerEngine", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  createVisionEngine: engine.create,
 }));
 import { useTracking, type Tracking } from "../src/movement/useTracking";
-
-describe("Camera / MediaPipe lifecycle", () => {
+import type { Exercise } from "../src/movement/exercises";
+const armPose = () => {
+  const p = Array.from({ length: 33 }, () => ({
+    x: 0.5,
+    y: 0.5,
+    visibility: 0,
+  }));
+  p[12] = { x: 0.5, y: 0.2, visibility: 0.9 };
+  p[14] = { x: 0.5, y: 0.5, visibility: 0.9 };
+  p[16] = { x: 0.7, y: 0.5, visibility: 0.9 };
+  return p;
+};
+const hand = () => {
+  const p = Array.from({ length: 21 }, () => ({ x: 0.5, y: 0.5 }));
+  p[0] = { x: 0.5, y: 0.8 };
+  p[9] = { x: 0.5, y: 0.6 };
+  [8, 12, 16, 20].forEach((id, i) => (p[id] = { x: 0.42 + i * 0.05, y: 0.3 }));
+  return p;
+};
+describe("Camera lifecycle and fresh movement observations", () => {
   let root: Root,
     host: HTMLDivElement,
     tracking: Tracking,
+    exercise: Exercise,
     arm: "left" | "right",
-    exercise: "elbow" | "grip" | "wrist" | "ship",
+    time: number,
     stop: ReturnType<typeof vi.fn>,
-    getUserMedia: ReturnType<typeof vi.fn>;
-  const detector = { detectForVideo: vi.fn(), close: vi.fn() };
+    request: ReturnType<typeof vi.fn>;
   function Probe() {
     tracking = useTracking(arm, undefined, exercise);
     return null;
   }
   beforeEach(() => {
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
-    arm = "right";
-    exercise = "elbow";
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] });
     host = document.createElement("div");
     document.body.append(host);
     root = createRoot(host);
+    exercise = "elbow";
+    arm = "right";
+    time = 1;
     stop = vi.fn();
-    getUserMedia = vi.fn().mockResolvedValue({
-      getTracks: () => [{ stop }],
-      getVideoTracks: () => [{ addEventListener: vi.fn() }],
-    });
+    request = vi
+      .fn()
+      .mockResolvedValue({
+        getTracks: () => [{ stop }],
+        getVideoTracks: () => [{ addEventListener: vi.fn() }],
+      });
     Object.defineProperty(navigator, "mediaDevices", {
       configurable: true,
-      value: { getUserMedia },
+      value: { getUserMedia: request },
     });
     vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
     vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
     vi.spyOn(HTMLMediaElement.prototype, "readyState", "get").mockReturnValue(
       2,
     );
-    vi.spyOn(HTMLMediaElement.prototype, "currentTime", "get").mockReturnValue(
-      1,
-    );
+    vi.spyOn(
+      HTMLMediaElement.prototype,
+      "currentTime",
+      "get",
+    ).mockImplementation(() => time);
     vi.spyOn(HTMLVideoElement.prototype, "videoWidth", "get").mockReturnValue(
       1280,
     );
     vi.spyOn(HTMLVideoElement.prototype, "videoHeight", "get").mockReturnValue(
       720,
     );
-    vision.resolve.mockReset().mockResolvedValue({});
-    vision.create.mockReset().mockResolvedValue(detector);
-    vision.handCreate.mockReset().mockResolvedValue(detector);
-    detector.close.mockClear();
-    detector.detectForVideo.mockReset().mockReturnValue({ landmarks: [[]] });
+    engine.close.mockReset();
+    engine.detect.mockReset().mockResolvedValue({ pose: armPose(), hands: [] });
+    engine.create
+      .mockReset()
+      .mockResolvedValue({
+        name: "MediaPipe test engine",
+        detect: engine.detect,
+        close: engine.close,
+      });
     act(() => root.render(<Probe />));
   });
   afterEach(() => {
@@ -71,178 +98,115 @@ describe("Camera / MediaPipe lifecycle", () => {
     vi.unstubAllGlobals();
     vi.useRealTimers();
   });
-  it("does not request camera permission until explicitly started", () => {
-    expect(getUserMedia).not.toHaveBeenCalled();
-    expect(tracking!.status).toBe("off");
-  });
-  it("uses the full model on CPU without WebGL warm-up, reference confidence settings and one person", async () => {
+  it("requests nothing before an explicit start, then closes camera and engine together", async () => {
+    expect(request).not.toHaveBeenCalled();
     await act(async () => {
       await tracking.start();
     });
-    expect(getUserMedia).toHaveBeenCalledWith({
-      audio: false,
-      video: {
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
-        facingMode: "user",
-      },
-    });
-    expect(vision.create).toHaveBeenCalledWith(
-      {},
-      expect.objectContaining({
-        numPoses: 1,
-        baseOptions: {
-          modelAssetPath: "/models/pose_landmarker_full.task",
-          delegate: "CPU",
-        },
-        minPoseDetectionConfidence: 0.3,
-        minPosePresenceConfidence: 0.3,
-        minTrackingConfidence: 0.3,
-      }),
-    );
-    expect(tracking!.status).toBe("on");
-    expect(tracking!.video.current?.isConnected).toBe(true);
-    expect(tracking!.frame.valid).toBe(false);
+    expect(engine.create).toHaveBeenCalledWith("elbow");
+    expect(tracking.frame.valid).toBe(true);
+    expect(tracking.frame.angle).toBe(90);
+    expect(tracking.video.current?.isConnected).toBe(true);
     act(() => tracking.stop());
     expect(stop).toHaveBeenCalled();
-    expect(detector.close).toHaveBeenCalledOnce();
+    expect(engine.close).toHaveBeenCalledOnce();
+    expect(document.querySelector("video")).toBeNull();
   });
-  it("reports a real model failure and releases the attached video", async () => {
-    vision.create.mockRejectedValueOnce(new Error("WASM load failed"));
+  it("invalidates a frozen video instead of presenting an old pose as current", async () => {
     await act(async () => {
       await tracking.start();
     });
-    expect(tracking!.status).toBe("error");
-    expect(tracking!.error).toContain("WASM load failed");
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(550);
+    });
+    expect(tracking.frame.valid).toBe(false);
+    expect(tracking.frame.angle).toBeNull();
+    expect(tracking.frame.message).toContain("camera paused");
+  });
+  it("releases the stream and video on a real model failure", async () => {
+    engine.create.mockRejectedValueOnce(new Error("WASM load failed"));
+    await act(async () => {
+      await tracking.start();
+    });
+    expect(tracking.status).toBe("error");
+    expect(tracking.error).toContain("WASM load failed");
     expect(stop).toHaveBeenCalled();
     expect(document.querySelector("video")).toBeNull();
   });
-  it("accepts only real selected-arm landmarks and clears them immediately after switching arms", async () => {
-    const points = Array.from({ length: 33 }, () => ({
-      x: 0.5,
-      y: 0.5,
-      visibility: 0,
-    }));
-    points[12] = { x: 0.5, y: 0.2, visibility: 0.4 };
-    points[14] = { x: 0.5, y: 0.5, visibility: 0.4 };
-    points[16] = { x: 0.8, y: 0.5, visibility: 0.4 };
-    detector.detectForVideo.mockReturnValue({ landmarks: [points] });
-    await act(async () => {
-      await tracking.start();
-    });
-    expect(tracking!.frame.valid).toBe(true);
-    expect(tracking!.frame.angle).toBe(90);
-    arm = "left";
-    act(() => root.render(<Probe />));
-    expect(tracking!.frame.valid).toBe(false);
-    expect(tracking!.frame.angle).toBeNull();
-  });
-  it("invalidates the last good pose when the video stops delivering new frames", async () => {
-    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] });
-    const points = Array.from({ length: 33 }, () => ({
-      x: 0.5,
-      y: 0.5,
-      visibility: 0,
-    }));
-    points[12] = { x: 0.5, y: 0.2, visibility: 0.4 };
-    points[14] = { x: 0.5, y: 0.5, visibility: 0.4 };
-    points[16] = { x: 0.8, y: 0.5, visibility: 0.4 };
-    detector.detectForVideo.mockReturnValue({ landmarks: [points] });
-    await act(async () => {
-      await tracking.start();
-    });
-    expect(tracking!.frame.valid).toBe(true);
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(500);
-    });
-    expect(tracking!.frame.valid).toBe(false);
-    expect(tracking!.frame.angle).toBeNull();
-    expect(tracking!.frame.message).toContain("camera paused");
-  });
-  it("shows denied permission as an error without switching to demo", async () => {
-    getUserMedia.mockRejectedValueOnce(
+  it("reports denied permission without switching to demo or loading the tracker", async () => {
+    request.mockRejectedValueOnce(
       new DOMException("Denied", "NotAllowedError"),
     );
     await act(async () => {
       await tracking.start();
     });
-    expect(tracking!.status).toBe("error");
-    expect(tracking!.error).toContain("permission");
-    expect(tracking!.frame.valid).toBe(false);
-    expect(vision.create).not.toHaveBeenCalled();
+    expect(tracking.error).toContain("permission");
+    expect(engine.create).not.toHaveBeenCalled();
+    expect(tracking.frame.valid).toBe(false);
   });
-  it("tracks actual hand landmarks without pretending they have pose visibility scores", async () => {
+  it("tracks Firefly directly from a hand without shoulders or a body pose", async () => {
+    exercise = "reach";
+    engine.detect.mockResolvedValue({
+      pose: [],
+      hands: [{ points: hand(), label: "Right", score: 0.9 }],
+    });
+    act(() => root.render(<Probe />));
+    await act(async () => {
+      await tracking.start();
+    });
+    expect(tracking.frame.valid).toBe(true);
+    expect(tracking.frame.height).toBeCloseTo(0.2);
+    expect(tracking.frame.angle).toBeNull();
+  });
+  it("keeps following the same spatial hand when its label flickers", async () => {
     exercise = "grip";
-    act(() => root.render(<Probe />));
-    const points = Array.from({ length: 21 }, () => ({ x: 0.5, y: 0.5 }));
-    points[0] = { x: 0.5, y: 0.8 };
-    points[9] = { x: 0.5, y: 0.6 };
-    [8, 12, 16, 20].forEach(
-      (id, i) => (points[id] = { x: 0.42 + i * 0.05, y: 0.3 }),
-    );
-    detector.detectForVideo.mockReturnValue({
-      landmarks: [points],
-      handedness: [[{ categoryName: "Right", score: 0.98 }]],
+    engine.detect.mockResolvedValue({
+      pose: [],
+      hands: [{ points: hand(), label: "Right", score: 0.9 }],
     });
+    act(() => root.render(<Probe />));
     await act(async () => {
       await tracking.start();
     });
-    expect(vision.handCreate).toHaveBeenCalledWith(
-      {},
-      expect.objectContaining({
-        numHands: 1,
-        baseOptions: {
-          modelAssetPath: "/models/hand_landmarker.task",
-          delegate: "CPU",
-        },
-      }),
-    );
-    expect(tracking!.frame.valid).toBe(true);
-    expect(tracking!.frame.openness).toBeGreaterThan(2);
-    expect(tracking!.frame.angle).toBeNull();
-    expect(vision.create).not.toHaveBeenCalled();
-  });
-  it("uses the hand tracker and a separate tilt signal for Butterfly Breeze", async () => {
-    exercise = "wrist";
-    act(() => root.render(<Probe />));
-    const points = Array.from({ length: 21 }, () => ({ x: 0.5, y: 0.5 }));
-    points[0] = { x: 0.4, y: 0.6 };
-    points[9] = { x: 0.6, y: 0.4 };
-    detector.detectForVideo.mockReturnValue({
-      landmarks: [points],
-      handedness: [[{ categoryName: "Right", score: 0.98 }]],
+    expect(tracking.frame.openness).toBeGreaterThan(2);
+    engine.detect.mockResolvedValue({
+      pose: [],
+      hands: [{ points: hand(), label: "Left", score: 0.9 }],
     });
+    time = 2;
     await act(async () => {
-      await tracking.start();
+      await vi.advanceTimersByTimeAsync(80);
     });
-    expect(vision.handCreate).toHaveBeenCalledOnce();
-    expect(vision.create).not.toHaveBeenCalled();
-    expect(tracking!.frame.valid).toBe(true);
-    expect(tracking!.frame.tilt).toBeGreaterThan(0);
-    expect(tracking!.frame.openness).toBeNull();
-    expect(tracking!.frame.angle).toBeNull();
+    expect(tracking.frame.valid).toBe(true);
   });
-  it("uses filtered signed hand steering for Pirate Ship, with other signals empty", async () => {
+  it("uses elbow-to-wrist forearm direction for the ship without requiring hand landmarks", async () => {
     exercise = "ship";
+    const pose = armPose();
+    pose[16] = { x: 0.6, y: 0.2, visibility: 0.9 };
+    engine.detect.mockResolvedValue({ pose, hands: [] });
     act(() => root.render(<Probe />));
-    const points = Array.from({ length: 21 }, () => ({ x: 0.5, y: 0.5 }));
-    points[0] = { x: 0.5, y: 0.7 };
-    points[9] = { x: 0.6, y: 0.4 };
-    detector.detectForVideo.mockReturnValue({
-      landmarks: [points],
-      handedness: [[{ categoryName: "Left", score: 0.98 }]],
-    });
     await act(async () => {
       await tracking.start();
     });
-    expect(vision.handCreate).toHaveBeenCalledOnce();
-    expect(vision.create).not.toHaveBeenCalled();
-    expect(tracking!.frame.valid).toBe(true);
-    expect(tracking!.frame.steering).toBeLessThan(0);
-    expect(tracking!.frame.tilt).toBeNull();
-    expect(tracking!.frame.openness).toBeNull();
-    expect(tracking!.frame.angle).toBeNull();
-    act(() => tracking.stop());
-    expect(tracking!.frame.steering).toBeUndefined();
+    expect(tracking.frame.valid).toBe(true);
+    expect(tracking.frame.steering).toBeLessThan(0);
+    expect(tracking.frame.openness).toBeNull();
+  });
+  it("locks one visible arm for the attempt and clears measurements on an explicit arm change", async () => {
+    const pose = armPose();
+    pose[11] = { x: 0.4, y: 0.2, visibility: 0.99 };
+    pose[13] = { x: 0.4, y: 0.5, visibility: 0.99 };
+    pose[15] = { x: 0.2, y: 0.5, visibility: 0.99 };
+    pose[12].visibility = 0.4;
+    pose[14].visibility = 0.4;
+    pose[16].visibility = 0.4;
+    engine.detect.mockResolvedValue({ pose, hands: [] });
+    await act(async () => {
+      await tracking.start();
+    });
+    expect(tracking.frame.arm).toBe("left");
+    arm = "left";
+    act(() => root.render(<Probe />));
+    expect(tracking.frame.valid).toBe(false);
   });
 });

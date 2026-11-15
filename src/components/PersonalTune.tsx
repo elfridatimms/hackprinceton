@@ -48,7 +48,7 @@ export function PersonalTune({
   useEffect(() => {
     if (profile) return;
     capture.current.update(frame, performance.now());
-    const p = capture.current.profile(arm, performance.now());
+    const p = capture.current.profile(frame.arm ?? arm, performance.now());
     if (p) setProfile(p);
   }, [frame, now, profile, arm]);
   useEffect(() => {

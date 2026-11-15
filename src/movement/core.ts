@@ -8,6 +8,8 @@ export type Landmark = {
 export type Arm = "left" | "right";
 export type TrackingFrame = {
   valid: boolean;
+  arm?: Arm;
+  posePoints?: Landmark[];
   angle: number | null;
   height?: number | null;
   openness?: number | null;

@@ -1,22 +1,20 @@
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { PersonalProfile } from "./personalization";
 import { MovementFilter } from "./filter";
 import {
-  handHeight,
+  createVisionEngine,
+  PlayingHand,
+  preferredArm,
+  type VisionEngine,
+} from "./trackerEngine";
+import {
   handOpenness,
-  handTilt,
-  handSteering,
-  isHandExercise,
-  reachTrackingMessage,
+  cameraHandHeight,
+  wristBend,
+  forearmSteering,
   type Exercise,
 } from "./exercises";
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { PoseLandmarker, HandLandmarker } from "@mediapipe/tasks-vision";
-import {
-  armTrackingMessage,
-  elbowAngle,
-  type Arm,
-  type TrackingFrame,
-} from "./core";
+import { elbowAngle, type Arm, type TrackingFrame } from "./core";
 import { FRAME_MAX_AGE_MS } from "./calibration";
 const EMPTY: TrackingFrame = {
   valid: false,
@@ -50,14 +48,14 @@ export function useTracking(
   profile: PersonalProfile | null = null,
 ) {
   const [status, setStatus] = useState<"off" | "loading" | "on" | "error">(
-    "off",
-  );
-  const [error, setError] = useState("");
-  const [frame, setFrame] = useState<TrackingFrame>(EMPTY);
+      "off",
+    ),
+    [error, setError] = useState(""),
+    [frame, setFrame] = useState<TrackingFrame>(EMPTY);
   const diagnostics = useRef<TrackingDiagnostics>({
-    build: "personal-scan-7",
+    build: "holistic-play-8",
     stage: "Camera off",
-    engine: "CPU",
+    engine: "—",
     video: "—",
     inferenceMs: null,
     frames: 0,
@@ -65,44 +63,37 @@ export function useTracking(
   });
   const video = useRef<HTMLVideoElement | null>(null),
     stream = useRef<MediaStream | null>(null),
-    model = useRef<PoseLandmarker | HandLandmarker | null>(null),
+    model = useRef<VisionEngine | null>(null),
     timer = useRef<ReturnType<typeof setTimeout> | null>(null),
-    generation = useRef(0),
-    armRef = useRef(arm);
-  const lockedHand = useRef<string | null>(null);
-  const gripFilter = useRef(new MovementFilter(0.16, 0.012));
-  const tiltFilter = useRef(new MovementFilter(0.12, 0.4));
-  const steeringFilter = useRef(new MovementFilter(0.12, 0.4));
-  const poseFilter = useRef(new MovementFilter());
-  const profileRef = useRef(profile);
-  profileRef.current =
-    profile?.exercise === exercise && profile.arm === arm ? profile : null;
+    generation = useRef(0);
+  const current = useRef({ arm, exercise });
+  current.current = { arm, exercise };
+  const modelExercise = useRef<Exercise | null>(null),
+    activeArm = useRef<Arm | null>(null),
+    playingHand = useRef(new PlayingHand()),
+    missingSince = useRef<number | null>(null);
+  const filter = useRef(new MovementFilter());
   useEffect(() => {
-    const p = profileRef.current;
-    gripFilter.current.configure(
-      p?.signalTau ?? 0.16,
-      p?.signalDeadband ?? 0.012,
+    // Filter both preview/practice and play; raw pose used to be unfiltered before calibration.
+    const p = profile?.exercise === exercise ? profile : null;
+    const angle =
+      exercise === "elbow" || exercise === "ship" || exercise === "wrist";
+    filter.current.configure(
+      p?.signalTau ?? (angle ? 0.12 : 0.1),
+      p?.signalDeadband ?? (angle ? 0.3 : exercise === "grip" ? 0.012 : 0.003),
     );
-    tiltFilter.current.configure(
-      p?.signalTau ?? 0.12,
-      p?.signalDeadband ?? 0.4,
-    );
-    steeringFilter.current.configure(
-      p?.signalTau ?? 0.12,
-      p?.signalDeadband ?? 0.4,
-    );
-    poseFilter.current.configure(
-      p?.signalTau ?? 0.16,
-      p?.signalDeadband ?? 0.012,
-    );
+    filter.current.reset();
     setFrame(EMPTY);
   }, [profile, exercise, arm]);
-  const modelExercise = useRef<Exercise | null>(null);
-  armRef.current = arm;
-  const exerciseRef = useRef(exercise);
-  exerciseRef.current = exercise;
   useEffect(() => {
-    setFrame({ ...EMPTY, message: `Finding your ${arm} arm…` });
+    activeArm.current = null;
+    setFrame({
+      ...EMPTY,
+      message:
+        exercise === "reach" || exercise === "grip"
+          ? "Show one hand to the camera."
+          : "Show your arm to the camera.",
+    });
   }, [arm, exercise]);
   const stop = useCallback(() => {
     generation.current++;
@@ -111,19 +102,18 @@ export function useTracking(
     stream.current = null;
     model.current?.close();
     model.current = null;
+    modelExercise.current = null;
     if (video.current) {
       video.current.pause();
       video.current.srcObject = null;
       video.current.remove();
       video.current = null;
     }
+    activeArm.current = null;
+    playingHand.current.reset();
+    missingSince.current = null;
+    filter.current.reset();
     diagnostics.current.stage = "Camera off";
-    lockedHand.current = null;
-    gripFilter.current.reset();
-    tiltFilter.current.reset();
-    steeringFilter.current.reset();
-    poseFilter.current.reset();
-    modelExercise.current = null;
     setFrame(EMPTY);
     setStatus("off");
   }, []);
@@ -133,21 +123,21 @@ export function useTracking(
     setStatus("loading");
     setError("");
     diagnostics.current = {
-      build: "personal-scan-7",
+      build: "holistic-play-8",
       stage: "Waiting for camera permission",
-      engine: "CPU",
+      engine: "—",
       video: "—",
       inferenceMs: null,
       frames: 0,
       lastError: "",
     };
-    let pendingVideo: HTMLVideoElement | null = null;
-    let pending: MediaStream | null = null;
-    let pendingModel: PoseLandmarker | HandLandmarker | null = null;
+    let pending: MediaStream | null = null,
+      pendingVideo: HTMLVideoElement | null = null,
+      pendingModel: VisionEngine | null = null;
     try {
       if (!navigator.mediaDevices?.getUserMedia)
         throw new Error(
-          "Camera access needs a secure browser connection. You can still explore with demo controls.",
+          "Camera access needs a secure connection. You can still play with buttons.",
         );
       pending = await requestStream();
       if (id !== generation.current) {
@@ -161,7 +151,7 @@ export function useTracking(
       el.tabIndex = -1;
       el.style.cssText =
         "position:fixed;left:0;bottom:0;width:1px;height:1px;pointer-events:none;opacity:0.01";
-      document.body.appendChild(el);
+      document.body.append(el);
       el.autoplay = true;
       el.playsInline = true;
       el.muted = true;
@@ -173,231 +163,136 @@ export function useTracking(
         pending.getTracks().forEach((t) => t.stop());
         return;
       }
-      diagnostics.current.stage = "Loading arm tracker";
+      const activeExercise = current.current.exercise;
+      diagnostics.current.stage = "Loading movement tracker";
       diagnostics.current.video = `${el.videoWidth} × ${el.videoHeight}`;
-      setFrame({ ...EMPTY, message: "Camera is on. Loading arm tracking…" });
-      const { FilesetResolver, PoseLandmarker, HandLandmarker } =
-        await import("@mediapipe/tasks-vision");
-      const files = await FilesetResolver.forVisionTasks("/mediapipe/wasm");
-      const createModel = (delegate: "GPU" | "CPU") =>
-        PoseLandmarker.createFromOptions(files, {
-          baseOptions: {
-            modelAssetPath: "/models/pose_landmarker_full.task",
-            delegate,
-          },
-          runningMode: "VIDEO",
-          numPoses: 1,
-          minPoseDetectionConfidence: 0.3,
-          minPosePresenceConfidence: 0.3,
-          minTrackingConfidence: 0.3,
-        });
-      // CPU avoids WebGL warm-up. Each exercise uses the model it actually needs.
-      const activeExercise = exerciseRef.current;
-      pendingModel = isHandExercise(activeExercise)
-        ? await HandLandmarker.createFromOptions(files, {
-            baseOptions: {
-              modelAssetPath: "/models/hand_landmarker.task",
-              delegate: "CPU",
-            },
-            runningMode: "VIDEO",
-            numHands: 1,
-            minHandDetectionConfidence: 0.5,
-            minHandPresenceConfidence: 0.5,
-            minTrackingConfidence: 0.5,
-          })
-        : await createModel("CPU");
-
+      setFrame({ ...EMPTY, message: "Waking up the movement tracker…" });
+      pendingModel = await createVisionEngine(activeExercise);
       if (id !== generation.current) {
         pending.getTracks().forEach((t) => t.stop());
         pendingModel.close();
         return;
       }
-      modelExercise.current = activeExercise;
-      diagnostics.current.engine = isHandExercise(activeExercise)
-        ? "CPU · hand tracker"
-        : "CPU · pose tracker";
       model.current = pendingModel;
-      diagnostics.current.stage = "Waiting for a visible arm";
+      modelExercise.current = activeExercise;
+      diagnostics.current.engine = pendingModel.name;
       setStatus("on");
       let lastTime = -1,
         lastMeasurementAt = 0;
-      const infer = () => {
+      const infer = async () => {
         if (id !== generation.current) return;
+        const started = performance.now();
         try {
-          const now = performance.now();
           if (
-            modelExercise.current === exerciseRef.current &&
+            modelExercise.current === current.current.exercise &&
             el.readyState >= 2 &&
             el.currentTime !== lastTime &&
             !document.hidden
           ) {
             lastTime = el.currentTime;
-            lastMeasurementAt = now;
-            const result = model.current!.detectForVideo(el, now);
-            const inferenceMs = performance.now() - now;
+            const observation = await pendingModel!.detect(el, started);
+            if (id !== generation.current) return;
+            const at = performance.now(),
+              inferenceMs = at - started,
+              timely = inferenceMs <= FRAME_MAX_AGE_MS;
+            lastMeasurementAt = at;
             diagnostics.current.inferenceMs = Math.round(inferenceMs);
             diagnostics.current.frames++;
-            const points = result.landmarks[0] ?? [];
-            const isGrip = exerciseRef.current === "grip";
-            const isWrist = exerciseRef.current === "wrist";
-            const isShip = exerciseRef.current === "ship";
-            const handMode = isHandExercise(exerciseRef.current);
-            const handedness =
-              "handedness" in result ? result.handedness[0]?.[0] : undefined;
-            const label = handedness?.categoryName ?? null;
-            const confidence = handedness?.score ?? 0;
-            if (
-              handMode &&
-              label &&
-              confidence >= 0.5 &&
-              lockedHand.current === null
-            )
-              lockedHand.current = label;
-            const sameHand =
-              !handMode || (!!label && label === lockedHand.current);
-            const rawOpenness =
-              isGrip && confidence >= 0.5 && sameHand
-                ? handOpenness(points, el.videoWidth / el.videoHeight)
-                : null;
-            const rawTilt =
-              isWrist && confidence >= 0.5 && sameHand
-                ? handTilt(points, el.videoWidth / el.videoHeight)
-                : null;
-            const rawSteering =
-              isShip && confidence >= 0.5 && sameHand
-                ? handSteering(points, el.videoWidth / el.videoHeight)
-                : null;
-            const timely = inferenceMs <= FRAME_MAX_AGE_MS;
-            const steering = steeringFilter.current.update(
-              timely ? rawSteering : null,
-              now,
-            );
-            const openness = gripFilter.current.update(
-              timely ? rawOpenness : null,
-              now,
-            );
-            const tilt = tiltFilter.current.update(
-              timely ? rawTilt : null,
-              now,
-            );
-            const rawAngle = handMode
-              ? null
-              : elbowAngle(
-                  points,
-                  armRef.current,
-                  el.videoWidth / el.videoHeight,
-                );
-            const rawHeight = handMode
-              ? null
-              : handHeight(
-                  points,
-                  armRef.current,
-                  el.videoWidth / el.videoHeight,
-                );
-            const isReach = exerciseRef.current === "reach";
-            const rawValue = isShip
-              ? rawSteering
-              : isWrist
-                ? rawTilt
-                : isGrip
-                  ? rawOpenness
-                  : isReach
-                    ? rawHeight
-                    : rawAngle;
-            const filteredPose =
-              profileRef.current && !handMode
-                ? poseFilter.current.update(timely ? rawValue : null, now)
-                : null;
-            const angle =
-              !handMode && !isReach && profileRef.current
-                ? filteredPose
-                : rawAngle;
-            const height =
-              isReach && profileRef.current ? filteredPose : rawHeight;
-            const detected = isShip
-              ? steering !== null
-              : isWrist
-                ? tilt !== null
-                : isGrip
-                  ? openness !== null
-                  : isReach
-                    ? height !== null
-                    : angle !== null;
+            const pose = observation.pose;
+            if (!activeArm.current)
+              activeArm.current = preferredArm(pose, current.current.arm);
+            const side = activeArm.current ?? current.current.arm;
+            const handMode =
+              activeExercise === "grip" || activeExercise === "reach";
+            const hand = handMode
+              ? playingHand.current.select(observation.hands)
+              : observation.hands.find((h) => h.label.toLowerCase() === side);
+            const points =
+              handMode || activeExercise === "wrist"
+                ? (hand?.points ?? [])
+                : pose;
+            const aspect = el.videoWidth / el.videoHeight;
+            const rawValue =
+              activeExercise === "grip"
+                ? handOpenness(points, aspect)
+                : activeExercise === "reach"
+                  ? cameraHandHeight(points)
+                  : activeExercise === "wrist"
+                    ? wristBend(pose, points, side, aspect)
+                    : activeExercise === "ship"
+                      ? forearmSteering(pose, side, aspect)
+                      : elbowAngle(pose, side, aspect);
+            const value = filter.current.update(timely ? rawValue : null, at);
+            if (value === null) {
+              if (missingSince.current === null) missingSince.current = at;
+              // Reacquire after a genuine absence, without trusting a flickering handedness label.
+              if (handMode && at - missingSince.current > 1000)
+                playingHand.current.reset();
+            } else missingSince.current = null;
+            const valid = value !== null && timely;
             const missing = handMode
-              ? !sameHand && label
-                ? "Bring your playing hand back."
-                : isShip
-                  ? "Show your palm with fingers up, like a little wave."
-                  : "Show your palm. Keep your wrist and fingers in the picture."
-              : isReach
-                ? reachTrackingMessage(points, armRef.current)
-                : armTrackingMessage(points, armRef.current);
-            diagnostics.current.stage = !timely
-              ? "Camera processing is too slow"
-              : detected
-                ? "Arm in view"
-                : missing;
+              ? "Keep your playing hand in the picture."
+              : activeExercise === "wrist"
+                ? "Show your hand and elbow from the side. Rest your forearm."
+                : activeExercise === "ship"
+                  ? "Keep your elbow and hand in view. Fingers can stay relaxed."
+                  : "Keep your shoulder, elbow and hand in view.";
+            diagnostics.current.stage = valid
+              ? "Following your movement"
+              : missing;
             setFrame({
-              valid: detected && timely,
-              pointsValid:
-                timely &&
-                (handMode
-                  ? sameHand && confidence >= 0.5 && points.length === 21
-                  : points.length === 33),
-              rawValue: timely ? rawValue : null,
-              height: timely ? height : null,
-              openness: timely ? openness : null,
-              rawOpenness: timely ? rawOpenness : null,
-              tilt: timely ? tilt : null,
-              steering: timely ? steering : null,
-              angle: timely ? angle : null,
-              at: now,
+              valid,
+              at: started,
               points,
+              posePoints: pose,
+              arm: side,
+              pointsValid: timely && points.length > 0,
+              rawValue: timely ? rawValue : null,
+              angle: activeExercise === "elbow" ? value : null,
+              height: activeExercise === "reach" ? value : null,
+              openness: activeExercise === "grip" ? value : null,
+              rawOpenness: activeExercise === "grip" ? rawValue : null,
+              tilt: activeExercise === "wrist" ? value : null,
+              steering: activeExercise === "ship" ? value : null,
               message: !timely
-                ? "Camera processing is slow. Close other camera apps or try demo controls."
-                : detected
-                  ? handMode || isReach
-                    ? "I can see your hand!"
-                    : "I can see your arm."
+                ? "The camera is taking a moment."
+                : valid
+                  ? "I’m following you!"
                   : missing,
             });
-          } else if (!document.hidden) {
-            if (now - lastMeasurementAt > FRAME_MAX_AGE_MS) {
-              gripFilter.current.reset();
-              tiltFilter.current.reset();
-              steeringFilter.current.reset();
-              poseFilter.current.reset();
-            }
-            setFrame((previous) =>
-              now - previous.at > FRAME_MAX_AGE_MS
-                ? {
-                    ...EMPTY,
-                    at: now,
-                    message: "The camera paused. Check the camera connection.",
-                  }
-                : previous,
-            );
+          } else if (
+            !document.hidden &&
+            performance.now() - lastMeasurementAt > FRAME_MAX_AGE_MS
+          ) {
+            filter.current.reset();
+            setFrame({
+              ...EMPTY,
+              at: performance.now(),
+              message: "The camera paused. Check the camera connection.",
+            });
           }
-          timer.current = setTimeout(infer, 66);
+          if (id === generation.current)
+            timer.current = setTimeout(
+              () => void infer(),
+              Math.max(0, 50 - (performance.now() - started)),
+            );
         } catch (cause) {
-          gripFilter.current.reset();
-          tiltFilter.current.reset();
-          steeringFilter.current.reset();
-          poseFilter.current.reset();
+          if (id !== generation.current) return;
+          filter.current.reset();
           diagnostics.current.stage = "Tracking error";
           diagnostics.current.lastError =
             cause instanceof Error ? cause.message : String(cause);
           setFrame({ ...EMPTY, message: "Let’s adjust the camera." });
           setError(
-            "Camera tracking stopped. Reconnect your camera or choose demo controls.",
+            "Camera tracking stopped. Reconnect the camera or play with buttons.",
           );
           setStatus("error");
           stream.current?.getTracks().forEach((t) => t.stop());
-          model.current?.close();
+          pendingModel?.close();
           model.current = null;
         }
       };
-      infer();
+      void infer();
       pending.getVideoTracks().forEach((t) =>
         t.addEventListener("ended", () => {
           if (id === generation.current) {
@@ -424,12 +319,12 @@ export function useTracking(
       setStatus("error");
       setError(
         e instanceof DOMException && e.name === "NotAllowedError"
-          ? "Camera permission wasn’t granted. You can allow it in your browser, or try demo controls."
+          ? "Camera permission wasn’t granted. Allow it in your browser, or play with buttons."
           : e instanceof DOMException && e.name === "NotFoundError"
-            ? "No camera was found. Connect one, or try demo controls."
+            ? "No camera was found. Connect one, or play with buttons."
             : e instanceof Error
               ? e.message
-              : "The movement model could not load. Please reconnect, or use demo controls.",
+              : "The movement tracker could not load. Please reconnect.",
       );
     }
   }, [stop, requestStream]);

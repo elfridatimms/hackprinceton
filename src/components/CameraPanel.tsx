@@ -35,8 +35,15 @@ export function CameraFeed({
   const frameRef = useRef(tracking.frame);
   frameRef.current = tracking.frame;
   useEffect(() => {
-    let id = 0;
+    let id = 0,
+      lastDraw = -100;
     const draw = () => {
+      const now = performance.now();
+      if (now - lastDraw < 1000 / 30) {
+        id = requestAnimationFrame(draw);
+        return;
+      }
+      lastDraw = now;
       const c = canvas.current,
         vid = tracking.video.current;
       if (c) {
@@ -53,9 +60,32 @@ export function CameraFeed({
             if (
               exercise === "grip" ||
               exercise === "wrist" ||
-              exercise === "ship"
+              exercise === "reach"
             ) {
               if (frame.valid || (scan && frame.pointsValid)) {
+                if (exercise === "wrist" && frame.posePoints) {
+                  const elbow =
+                      frame.posePoints[(frame.arm ?? arm) === "left" ? 13 : 14],
+                    wrist = frame.points[0];
+                  if (usableLandmark(elbow) && wrist) {
+                    ctx.beginPath();
+                    ctx.moveTo(elbow.x * c.width, elbow.y * c.height);
+                    ctx.lineTo(wrist.x * c.width, wrist.y * c.height);
+                    ctx.strokeStyle = "#f5dc97";
+                    ctx.lineWidth = 5;
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.arc(
+                      elbow.x * c.width,
+                      elbow.y * c.height,
+                      6,
+                      0,
+                      Math.PI * 2,
+                    );
+                    ctx.fillStyle = "#f5dc97";
+                    ctx.fill();
+                  }
+                }
                 const links = [
                   [0, 1],
                   [1, 2],
@@ -104,7 +134,7 @@ export function CameraFeed({
                 }
               }
             } else {
-              const left = arm === "left";
+              const left = (frame.arm ?? arm) === "left";
               const pairs = scan
                 ? [
                     [11, 12],
@@ -134,25 +164,15 @@ export function CameraFeed({
                     [30, 32],
                     [28, 32],
                   ]
-                : exercise === "reach"
-                  ? left
-                    ? [
-                        [12, 11],
-                        [11, 15],
-                      ]
-                    : [
-                        [11, 12],
-                        [12, 16],
-                      ]
-                  : left
-                    ? [
-                        [11, 13],
-                        [13, 15],
-                      ]
-                    : [
-                        [12, 14],
-                        [14, 16],
-                      ];
+                : left
+                  ? [
+                      [11, 13],
+                      [13, 15],
+                    ]
+                  : [
+                      [12, 14],
+                      [14, 16],
+                    ];
               ctx.strokeStyle = scan ? "#8df4da" : "#ffdf8b";
               ctx.lineWidth = scan ? Math.max(3, c.width / 230) : 5;
               ctx.lineCap = "round";
@@ -376,13 +396,13 @@ export function InputPanel({
                 </div>
                 <p className="small">
                   {exercise === "ship"
-                    ? "One playing hand · palm forward, fingers up"
+                    ? "Elbow in view · turn your forearm like a wheel"
                     : exercise === "wrist"
-                      ? "One playing hand · fingers across the picture"
+                      ? "Rest your forearm · show your elbow and hand"
                       : exercise === "grip"
                         ? "One playing hand · palm to camera"
                         : exercise === "reach"
-                          ? "Front view · both shoulders visible"
+                          ? "One hand · lift and lower in the picture"
                           : (arm === "left" ? "Left" : "Right") +
                             " arm · side-on view"}
                 </p>

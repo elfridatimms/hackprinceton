@@ -17,6 +17,8 @@ import {
 } from "../src/movement/exercises";
 let recordedTilt = 0,
   targetTilt = 0;
+let recordedLift = 0,
+  targetLift = 0;
 let image = new Image();
 image.src = new URL("./fixtures/right_hands.jpg", import.meta.url).href;
 const requestSource = async () => {
@@ -38,7 +40,8 @@ const requestSource = async () => {
         h = image.naturalHeight * s;
       recordedTilt += (targetTilt - recordedTilt) * 0.18;
       c.save();
-      c.translate(canvas.width / 2, canvas.height / 2);
+      recordedLift += (targetLift - recordedLift) * 0.18;
+      c.translate(canvas.width / 2, canvas.height / 2 + recordedLift);
       c.rotate((recordedTilt * Math.PI) / 180);
       c.drawImage(
         image,
@@ -75,13 +78,15 @@ function Check() {
   useEffect(() => {
     image = new Image();
     image.src = new URL(
-      isHandExercise(settings.exercise)
+      settings.exercise === "grip" || settings.exercise === "reach"
         ? "./fixtures/right_hands.jpg"
         : "./fixtures/pose.jpg",
       import.meta.url,
     ).href;
     recordedTilt = 0;
     targetTilt = 0;
+    targetLift = 0;
+    recordedLift = 0;
   }, [settings.exercise]);
   const tracking = useTracking(
     settings.arm,
@@ -128,6 +133,38 @@ function Check() {
         onClick={() => setPhase("calibration")}
       >
         Open actual movement UI
+      </button>
+      <button
+        className="button secondary"
+        style={{
+          position: "fixed",
+          top: 65,
+          left: 6,
+          zIndex: 120,
+          fontSize: 9,
+          padding: 6,
+        }}
+        onClick={() => {
+          targetLift = -110;
+        }}
+      >
+        Lift recorded hand
+      </button>
+      <button
+        className="button secondary"
+        style={{
+          position: "fixed",
+          top: 110,
+          left: 6,
+          zIndex: 120,
+          fontSize: 9,
+          padding: 6,
+        }}
+        onClick={() => {
+          targetLift = 0;
+        }}
+      >
+        Lower recorded hand
       </button>
       <button className="button secondary" onClick={tracking.stop}>
         Stop source

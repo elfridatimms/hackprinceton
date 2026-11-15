@@ -1,3 +1,4 @@
+import { Helm } from "./components/Helm";
 import { MotionPreview } from "./components/MotionPreview";
 import { GameTabs } from "./components/GameTabs";
 import { MovementLesson } from "./components/MovementLesson";
@@ -65,7 +66,10 @@ export default function App() {
   useEffect(() => {
     try {
       const { personalization: _sessionOnly, ...preferences } = settings;
-      localStorage.setItem("luma-settings", JSON.stringify(preferences));
+      localStorage.setItem(
+        "luma-settings",
+        JSON.stringify({ ...preferences, inputVersion: 2 }),
+      );
     } catch {}
     audio.mute(settings.muted);
     if (previousArm.current !== settings.arm) {
@@ -448,7 +452,7 @@ export default function App() {
                 <span />{" "}
                 {session.mode === "demo"
                   ? "Keyboard & slider"
-                  : ["grip", "wrist", "ship"].includes(settings.exercise)
+                  : ["grip", "reach"].includes(settings.exercise)
                     ? "One playing hand"
                     : settings.arm + " arm"}
               </span>
@@ -523,9 +527,50 @@ export default function App() {
                 </div>
                 <div className="firefly-score">
                   <Sparkles size={18} />
-                  <strong>{session.fireflies}</strong>
-                  <span>little lights</span>
+                  <strong key={session.fireflies}>{session.fireflies}</strong>
+                  <span>
+                    {settings.exercise === "elbow"
+                      ? "sky gates"
+                      : settings.exercise === "wrist"
+                        ? "flower visits"
+                        : settings.exercise === "ship"
+                          ? "treasures"
+                          : "little lights"}
+                  </span>
                 </div>
+                {settings.exercise === "ship" && (
+                  <Helm
+                    position={session.position}
+                    waiting={session.waiting || session.phase !== "playing"}
+                  />
+                )}
+                {(settings.exercise === "elbow" ||
+                  settings.exercise === "wrist" ||
+                  settings.exercise === "reach") && (
+                  <div className="game-mission">
+                    <span>
+                      {settings.exercise === "elbow"
+                        ? "✦ SKY GATE ADVENTURE"
+                        : settings.exercise === "wrist"
+                          ? "✿ NECTAR GARDEN"
+                          : "✧ FIREFLY CHASE"}
+                    </span>
+                    <strong>
+                      {settings.exercise === "elbow"
+                        ? "Fly through the glowing gaps!"
+                        : settings.exercise === "wrist"
+                          ? "Visit the glowing flowers!"
+                          : "Catch the little lights!"}
+                    </strong>
+                    <small>
+                      {settings.exercise === "elbow"
+                        ? "Bend to rise. Lower to glide."
+                        : settings.exercise === "wrist"
+                          ? "Tilt your hand. Flutter between flowers."
+                          : "Lift and lower your hand. Luma follows."}
+                    </small>
+                  </div>
+                )}
                 {settings.exercise === "ship" && (
                   <div
                     className="pirate-voyage"
@@ -579,13 +624,13 @@ export default function App() {
                     </p>
                     <span>
                       {settings.exercise === "ship"
-                        ? "Show your palm with fingers pointing up."
+                        ? "Show your elbow and hand. Turn your forearm."
                         : settings.exercise === "wrist"
-                          ? "Show your wrist and knuckles to the camera."
+                          ? "Show your hand and elbow from the side."
                           : settings.exercise === "grip"
                             ? "Show your palm and fingertips to the camera."
                             : settings.exercise === "reach"
-                              ? "Let the camera see your shoulders and hand."
+                              ? "Keep your wrist and fingers in the picture."
                               : "Bring your shoulder, elbow, and wrist into view."}
                     </span>
                     {tracking.status !== "on" && (
@@ -632,7 +677,9 @@ export default function App() {
                               ? "Ready to sail to Sparkle Island?"
                               : settings.exercise === "wrist"
                                 ? "Ready to give a butterfly a breeze?"
-                                : "Ready to bring the fireflies home?"
+                                : settings.exercise === "elbow"
+                                  ? "Ready to fly through the sky gates?"
+                                  : "Ready to bring the fireflies home?"
                           : session.mode === "demo"
                             ? settings.exercise === "ship"
                               ? practiceUp
@@ -656,7 +703,9 @@ export default function App() {
                               ? "Ahoy! Let’s sail!"
                               : settings.exercise === "wrist"
                                 ? "Let’s help the butterflies!"
-                                : "Let’s find the fireflies"}{" "}
+                                : settings.exercise === "elbow"
+                                  ? "Let’s fly!"
+                                  : "Let’s find the fireflies"}{" "}
                           <ArrowRight size={16} />
                         </button>
                       )}
@@ -669,7 +718,7 @@ export default function App() {
                       (settings.exercise === "ship"
                         ? [
                             "Ahoy, little captain. Take your time.",
-                            "A little tilt. A lovely voyage.",
+                            "A little turn. A lovely voyage.",
                             "Sail to the sparkling ring.",
                             "The islands are happy to see you.",
                             "Rest whenever you like.",
@@ -748,12 +797,12 @@ export default function App() {
                 {session.mode === "demo"
                   ? "Demo input"
                   : session.waiting
-                    ? ["grip", "wrist", "ship"].includes(settings.exercise)
+                    ? ["grip", "reach"].includes(settings.exercise)
                       ? "Finding your hand"
                       : "Finding your arm"
                     : settings.personalization
                       ? "Personal scan ready"
-                      : ["grip", "wrist", "ship"].includes(settings.exercise)
+                      : ["grip", "reach"].includes(settings.exercise)
                         ? "Hand in view"
                         : "Arm in view"}
               </div>
