@@ -227,14 +227,20 @@ export function MovementResponse({
     </div>
   );
 }
-export function PracticeStickers({ count }: { count: number }) {
+export function PracticeStickers({
+  count,
+  total = 2,
+}: {
+  count: number;
+  total?: number;
+}) {
   return (
     <div
       className="practice-stickers"
       role="img"
-      aria-label={`${Math.min(2, count)} of 2 movements completed`}
+      aria-label={`${Math.min(total, count)} of ${total} movements completed`}
     >
-      {[0, 1].map((i) => (
+      {Array.from({ length: total }, (_, i) => i).map((i) => (
         <span key={i} className={count > i ? "sticker-done" : ""}>
           <svg viewBox="0 0 60 60" fill="none" aria-hidden="true">
             <path

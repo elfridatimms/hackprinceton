@@ -1,6 +1,6 @@
 # Luma & the Firefly Forest
 
-A child-friendly, camera-controlled forest with five playable game tabs, original procedural Three.js art, animated movement lessons, and a complete welcome → setup → calibration → practice → play → rest → finish flow.
+A child-friendly, camera-controlled forest with five playable game tabs, original procedural Three.js art, animated movement lessons, and a complete welcome → animation → one practice movement → play → rest → finish flow.
 
 ## Run
 
@@ -32,24 +32,24 @@ Serve `dist/` with a static HTTPS host. Camera permission requires HTTPS or loca
 
 The tabs have visible selected states and support arrow keys, Home, and End. Switching games during active play pauses first and asks before finishing that adventure. Each exercise keeps an independent movement range. Session summaries record the actual game and input mode.
 
-Every game has a large animated demonstration before camera permission, a pose illustration beside calibration, an in-game guide, and **Show me how** / **?** controls to replay the lesson. Lessons pause active play; **My turn!** resumes it. Instructions use one concrete action at a time (for example, “Open your hand.” or “Tilt your hand left.”), followed by “Hold still.” for automatic saving. Directional demonstrations show the requested action and hold its target pose; the full lesson still loops both directions. Instructions are silent and sequential: a dedicated animation plays first (3 seconds for one endpoint, 5.5 seconds for a complete movement). It then disappears and the live camera opens for the attempt. No observations are captured or counted during the demonstration; only fresh frames after the handoff can contribute. Returning from a hidden tab restarts the example. A replay control pauses assessment and shows the animation again. During attempts, current input is compared with the personally calibrated target: moving towards it, holding it, or waiting for visible landmarks. This is game task progress, not a clinical movement-quality score. Two practice stickers are earned only by completed movements. MediaPipe counts and traces remain inside grown-up details. Text stays English. Technical information is kept in grown-up controls.
+Every game has a large, silent animated demonstration before camera permission, an in-game guide, and **Show me how** / **?** controls to replay the lesson. Instructions use concrete actions such as “Open your hand.” or “Tilt your hand left.” The 5.5-second full movement demonstration disappears before the live attempt. No observations are captured or counted during the demonstration. Returning from a hidden tab restarts the example. The child then copies one complete movement, earns one sticker, and enters the game automatically. There are no separate “comfy spots”, endpoint-saving screens, or voice instructions. During the attempt the live camera and game character respond to fresh input. Target progress appears only once an observed range is available. This is game task progress, not a clinical movement-quality score. MediaPipe counts, traces, and technical information stay inside grown-up details. Text stays English.
 
 ## Play
 
-- **Let’s play with Luma** opens the demonstration and camera setup. Camera permission is requested only after **Let’s try it together**.
+- **Let’s play with Luma** opens the demonstration and camera setup. Camera permission is requested only after the animation and **Let’s play!**.
 - **Try without a camera** / **Play with buttons instead** uses ↑ / ↓ (← / → for Pirate Ship) or a touch/pointer slider. Demo controls are explicitly labeled and never counted as camera-measured rehabilitation performance.
-- A live MediaPipe scan shows the actual mirrored video, current landmarks, on-device inference time and a recent movement trace. Hold two comfortable positions to save them automatically, then follow two complete guided movements to fit a personal session profile. A configured range can also be entered in grown-up help while current tracking is valid.
+- A live MediaPipe scan shows the actual mirrored video, current landmarks, on-device inference time and a recent movement trace. One ordinary practice movement learns a personal session range without separately saving positions. A configured range can also be entered in grown-up help while current tracking is valid.
 - Escape, pause, or **Take a break** opens the resting screen. Returning from another browser tab requires resuming; the tracking gate reacquires before counting.
 - Grown-up settings control the exercise, comfortable range, demonstration cycle target, speed, smoothing, sound, reduced motion, and optional browser-local summaries. The default eight cycles is a demo setting, not a treatment recommendation.
 - **Grown-up camera help** can copy a status report with runtime state and errors. It contains no images, video, coordinates, movement angles, or trace. Nothing is uploaded automatically.
 
-## Fresh personal scan for every camera adventure
+## A short personal start for every camera adventure
 
-The camera route is Watch → Scan → Comfy spots → Your magic. Hand games display a 21-point hand overlay; arm games display the actual visible body connections. The scan trace uses timestamped camera observations and leaves gaps for missing data. The sweeping line is a visual guide, not a claim about detection or scan progress.
+The camera route is Watch → copy one movement → play. Hand games display a 21-point hand overlay; arm games display the actual visible body connections. The scan trace uses timestamped camera observations and leaves gaps for missing data. The sweeping line is a visual guide, not a claim about scan progress.
 
-Endpoint holds save automatically after 1.8 seconds of fresh, steady observations, with a short preparation interval and a visible countdown. No capture button is required. The second endpoint only starts counting down after a distinct valid movement; tracking loss resets the hold. Two stable endpoint holds provide raw stationary signal variation. Two complete low → high → low movements, with distinct fresh observations and dwell, validate the comfortable range. The session profile uses robust percentiles to trim at most 8% from either endpoint (never expand the captured range), MAD-based resting variation to fit a bounded filter deadband and time constant, and a matching response smoothing value. MediaPipe remains pretrained: this is personalized input calibration, not model retraining, biometric identification or a clinical assessment.
+The practice range uses the fifth-smallest and fifth-largest observations, requires at least 20 distinct valid samples, and needs at least five observations spanning 220 ms near each endpoint. A full low → high → low cycle with dwell completes the attempt. Actual timestamped observations from the attempt are replayed through the same counter when the range becomes available. A long initial rest does not bias the range, and isolated spikes cannot define it. Tracking loss interrupts pending movement. The profile trims at most 8% from observed endpoints and fits bounded filtering from raw signal variation. MediaPipe remains pretrained: this is personalized game input, not model retraining, biometric identification or a clinical assessment.
 
-The profile is applied to signal filtering and game input mapping. It remains in memory only and is excluded from stored preferences; camera start, restart and a new adventure request a fresh scan. Valid existing endpoints can be used explicitly through grown-up help without extra tuning. Camera loss, stale data, duplicates and gaps cannot complete a pending scan movement. Two completed scan movements satisfy the initial practice step.
+The profile is applied to filtering and game input mapping. It remains in memory only and is excluded from stored preferences. Camera restart and a new adventure request a fresh attempt. Grown-up help can explicitly start with current settings while tracking is valid. After one successful movement the adventure starts automatically; no separate confirmation is required.
 
 ## Tracking and movement calculation
 
@@ -77,7 +77,7 @@ The existing time-aware game smoothing remains independently configurable. Filte
 
 ## Calibration, counting, and rest
 
-Calibration requires at least five distinct valid samples spanning 650 ms within a recent 1.6 s window, with no gap over 450 ms. The central 80% spread must be stable (opening 0.16 ratio, reach 0.1 shoulder widths, elbow/tilt 6°). A median endpoint is used. Minimum endpoint differences are input-resolution constraints: 0.2 opening units, 0.12 reach units, or 5° projected angle.
+Quick practice requires distinct, fresh, supported observations at both ends of the observed range. Minimum endpoint differences are input-resolution constraints: 0.2 opening units, 0.12 reach units, or 5° projected angle. Legacy endpoint-calibration math remains covered by unit tests but is not part of the child-facing camera route.
 
 A repetition is **low → high → low** with 220 ms dwell, separate 18% / 82% thresholds, and 28% / 72% release hysteresis. Starting high, partial movement, jitter, user pause, and unreliable tracking do not complete cycles. Tracking loss immediately invalidates a pending cycle; reacquisition requires 650 ms of stable valid frames. The dragon remains calm, the world stops progressing, and input never silently changes to demo.
 
@@ -87,7 +87,7 @@ Collections are based on actual proximity in the game. Missing a target carries 
 
 `npm test` covers projected movement math and aspect correction, calibration, cycle dwell/hysteresis, tracking-loss handling, camera/model lifecycle, the correct hand versus pose model, normalized opening, thumb independence, the median/EMA filter, jitter suppression, real step response, stale-gap resets, frame-rate response, independent game ranges, tab keyboard navigation, and the selected animation/instructions for all five games.
 
-Development-only `tests/runtime-check.html` runs the actual bundled pose model. `tests/runtime-hook-check.html` runs the real camera hook and calibration with a clearly labeled canvas video stream from official MediaPipe test images. These development pages and test images are not included in the production static build. The real hand model distinguished the open and folded-finger fixtures and completed both calibration endpoints into practice. This is not a live-child-camera validation.
+Development-only `tests/runtime-check.html` runs the actual bundled pose model. `tests/runtime-hook-check.html` runs the real camera hook and quick practice with a clearly labeled canvas video stream from official MediaPipe test images. These development pages and test images are not included in the production static build. The real hand model distinguished the open and folded-finger fixtures and the rotating palm fixture exercises the short camera route. This is not a live-child-camera validation.
 
 This is a functional prototype, not a clinically validated medical device. It does not detect pain, fatigue, muscle activation, movement quality, recovery, or clinical outcomes. Camera compatibility and the intended users/camera positions require live supervised testing. Synchronous CPU inference can still briefly block slower devices; moving inference to a worker remains a performance improvement.
 

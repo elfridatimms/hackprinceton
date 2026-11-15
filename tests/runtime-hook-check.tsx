@@ -69,9 +69,9 @@ const requestSource = async () => {
 };
 function Check() {
   const [settings, setSettings] = useState<Settings>(defaultSettings),
-    [phase, setPhase] = useState<"idle" | "setup" | "calibration" | "practice">(
-      "idle",
-    );
+    [phase, setPhase] = useState<
+      "idle" | "setup" | "calibration" | "practice" | "playing"
+    >("idle");
   useEffect(() => {
     image = new Image();
     image.src = new URL(
@@ -127,7 +127,7 @@ function Check() {
         className="button secondary"
         onClick={() => setPhase("calibration")}
       >
-        Open actual calibration UI
+        Open actual movement UI
       </button>
       <button className="button secondary" onClick={tracking.stop}>
         Stop source
@@ -239,16 +239,16 @@ function Check() {
             {
               phase,
               transition: (next: "calibration") => setPhase(next),
-              reset: () => setPhase("practice"),
+              reset: (next: "playing") => setPhase(next),
             } as unknown as Session
           }
           onClose={() => setPhase("idle")}
           onDemo={() => setPhase("practice")}
         />
       )}{" "}
-      {phase === "practice" && (
+      {(phase === "practice" || phase === "playing") && (
         <h2>
-          Practice reached with real model tracking:{" "}
+          Game reached with real model tracking:{" "}
           {tracking.frame.valid ? "valid" : "waiting"}
         </h2>
       )}

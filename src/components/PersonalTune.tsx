@@ -1,142 +1,95 @@
-import { MotionPreview } from "./MotionPreview";
-import { assessMovement } from "../movement/assessment";
-import { MovementResponse, PracticeStickers } from "./PlayAlong";
-import { childInstructions } from "../movement/instructions";
 import { useEffect, useRef, useState } from "react";
-import {
-  ArrowRight,
-  Check,
-  RotateCcw,
-  Sparkles,
-  SlidersHorizontal,
-} from "lucide-react";
-import {
-  PersonalMotionCapture,
-  createPersonalProfile,
-  type PersonalProfile,
-} from "../movement/personalization";
+import { Check } from "lucide-react";
+import { assessMovement } from "../movement/assessment";
+import { QuickPracticeCapture } from "../movement/quickPractice";
+import { childInstructions } from "../movement/instructions";
 import { FRAME_MAX_AGE_MS } from "../movement/calibration";
-import { exercises, movementValue, type Exercise } from "../movement/exercises";
+import { movementValue, type Exercise } from "../movement/exercises";
 import { clamp, type Arm } from "../movement/core";
+import type { PersonalProfile } from "../movement/personalization";
 import type { Tracking } from "../movement/useTracking";
+import { MovementResponse, PracticeStickers } from "./PlayAlong";
 import { TrackingScan } from "./TrackingScan";
 export function PersonalTune({
   tracking,
   exercise,
   arm,
   range,
-  holds,
   onComplete,
-  onRetry,
+  onReplay,
   onDemo,
 }: {
   tracking: Tracking;
   exercise: Exercise;
   arm: Arm;
   range: { lower: number; upper: number };
-  holds: number[][];
-  onComplete: (profile: PersonalProfile | null) => void;
-  onRetry: () => void;
+  onComplete: (p: PersonalProfile | null) => void;
+  onReplay: () => void;
   onDemo: () => void;
 }) {
-  const capture = useRef(new PersonalMotionCapture());
-  const [previewing, setPreviewing] = useState(true);
-  const attemptAt = useRef(Infinity);
+  const capture = useRef(new QuickPracticeCapture(exercise));
   const [now, setNow] = useState(performance.now()),
-    [count, setCount] = useState(0),
     [profile, setProfile] = useState<PersonalProfile | null>(null);
-  const f = tracking.frame,
-    value = movementValue(f, exercise);
-  const clockNow = Math.max(now, performance.now());
+  const done = useRef(onComplete);
+  done.current = onComplete;
+  const frame = tracking.frame,
+    value = movementValue(frame, exercise),
+    clockNow = Math.max(now, performance.now());
   const fresh =
     tracking.status === "on" &&
-    f.valid &&
+    frame.valid &&
     value !== null &&
-    clockNow >= f.at &&
-    clockNow - f.at < FRAME_MAX_AGE_MS;
+    clockNow >= frame.at &&
+    clockNow - frame.at < FRAME_MAX_AGE_MS;
   useEffect(() => {
-    const id = setInterval(() => setNow(performance.now()), 100);
-    return () => clearInterval(id);
+    const timer = setInterval(() => setNow(performance.now()), 100);
+    return () => clearInterval(timer);
   }, []);
   useEffect(() => {
-    if (profile || previewing || f.at < attemptAt.current) return;
-    capture.current.update(f, exercise, range, performance.now());
-    setCount(capture.current.counter.count);
-    if (capture.current.counter.count >= 2) {
-      const samples = capture.current.samples,
-        span = Math.abs(range.upper - range.lower);
-      // For a manually entered range, obtain noise only from genuinely steady endpoint plateaus.
-      const plateaus: number[][] = [];
-      let group: typeof samples = [];
-      for (const s of samples) {
-        const pos = clamp(
-          (s.value - range.lower) / (range.upper - range.lower),
-        );
-        if (
-          (pos < 0.2 || pos > 0.8) &&
-          (!group.length || Math.abs(s.value - group[0].value) < span * 0.015)
-        )
-          group.push(s);
-        else {
-          if (group.length >= 5) plateaus.push(group.map((p) => p.raw));
-          group = [];
-        }
-      }
-      if (group.length >= 5) plateaus.push(group.map((p) => p.raw));
-      const learned = createPersonalProfile(
-        exercise,
-        arm,
-        range,
-        samples,
-        holds.length >= 2 ? holds : plateaus,
-        capture.current.counter.count,
-        performance.now(),
-      );
-      if (learned) setProfile(learned);
-    }
-  }, [f, now, profile, previewing, exercise, arm, range, holds]);
-  const instruction = childInstructions[exercise];
-  const phase = capture.current.counter.phase;
-  const currentInstruction =
-    phase === "seek-high" ? instruction.high : instruction.low;
-  const direction = phase === "seek-high" ? "up" : "down";
+    if (profile) return;
+    capture.current.update(frame, performance.now());
+    const p = capture.current.profile(arm, performance.now());
+    if (p) setProfile(p);
+  }, [frame, now, profile, arm]);
+  useEffect(() => {
+    if (!profile) return;
+    const timer = setTimeout(() => done.current(profile), 900);
+    return () => clearTimeout(timer);
+  }, [profile]);
+  const learned = capture.current.range,
+    phase = capture.current.motion.counter.phase;
   const position =
     fresh && value !== null
-      ? clamp((value - range.lower) / (range.upper - range.lower))
+      ? clamp(
+          (value - (learned ?? range).lower) /
+            ((learned ?? range).upper - (learned ?? range).lower),
+        )
       : null;
   const assessment = assessMovement(
-    position,
+    learned ? position : null,
     phase === "seek-high" ? "high" : "low",
   );
-  if (previewing)
-    return (
-      <MotionPreview
-        exercise={exercise}
-        title={childInstructions[exercise].goal}
-        onDone={() => {
-          capture.current.counter.invalidate();
-          attemptAt.current = performance.now();
-          setPreviewing(false);
-        }}
-      />
-    );
+  const instruction = childInstructions[exercise];
+  const action = learned
+    ? phase === "seek-high"
+      ? instruction.high
+      : instruction.low
+    : `${instruction.high} ${instruction.low}`;
   return (
-    <div className="personal-tune">
+    <div className="personal-tune quick-practice">
       <span className="scan-eyebrow">
-        <Sparkles size={13} /> {profile ? "Ready to play!" : "Your turn!"}
+        {profile ? "Ready to play!" : "Your turn!"}
       </span>
-      <h2 id="setup-title">{profile ? "You did it!" : currentInstruction}</h2>
+      <h2 id="setup-title">{profile ? "You did it!" : action}</h2>
       <p>
-        {profile
-          ? "Your little adventure is ready."
-          : "I’m watching your movement."}
+        {profile ? "Let’s go!" : "Copy the movement once. I’m following you."}
       </p>
       <div className="live-assessment">
         <TrackingScan
           tracking={tracking}
           exercise={exercise}
           arm={arm}
-          range={range}
+          range={learned ?? range}
         />
         <div className="live-movement-result">
           <MovementResponse exercise={exercise} position={position} />
@@ -145,82 +98,68 @@ export function PersonalTune({
             role="status"
             aria-live="polite"
           >
-            <strong>{profile ? "You did it!" : assessment.message}</strong>
-            <div
-              className="movement-task-progress"
-              role="progressbar"
-              aria-label="Progress towards the current movement"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={Math.round(assessment.progress * 100)}
-            >
-              <span style={{ width: `${assessment.progress * 100}%` }} />
-            </div>
+            <strong>
+              {profile
+                ? "That’s it!"
+                : !fresh
+                  ? tracking.status === "loading"
+                    ? "Getting the camera ready…"
+                    : frame.message
+                  : !learned
+                    ? "I’m following your movement."
+                    : assessment.message}
+            </strong>
+            {learned && (
+              <div
+                className="movement-task-progress"
+                role="progressbar"
+                aria-label="Progress towards the current movement"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={Math.round(assessment.progress * 100)}
+              >
+                <span style={{ width: `${assessment.progress * 100}%` }} />
+              </div>
+            )}
           </div>
-          <PracticeStickers count={profile ? 2 : count} />
+          <PracticeStickers count={profile ? 1 : 0} total={1} />
         </div>
       </div>
       {profile && (
-        <div className="personal-ready">
-          <div className="personal-ready-seal">
-            <Check size={26} />
-          </div>
-          <div>
-            <strong>Your little adventure is ready.</strong>
-            <span>Made for your own little moves.</span>
-          </div>
+        <div className="quick-success">
+          <Check size={18} /> Starting your adventure…
         </div>
       )}
-      {profile && (
-        <button
-          className="button primary full"
-          disabled={!fresh}
-          onClick={() => onComplete(profile)}
-        >
-          Let’s try my magic <ArrowRight size={17} />
-        </button>
-      )}
-      <details className="grownup-fold personal-explanation">
-        <summary>
-          <SlidersHorizontal size={13} /> What the scan adapts
-        </summary>
-        <p>
-          Every new camera adventure measures two comfortable positions, checks
-          two complete movements and estimates resting signal variation. These
-          observations set the movement mapping, filter deadband and response
-          smoothing for this session. MediaPipe uses its pretrained model; this
-          step calibrates game controls. No identity or video is saved.
+      {tracking.error && (
+        <p className="error-message">
+          {tracking.error}
+          <button onClick={() => void tracking.start()}>
+            Try the camera again
+          </button>
         </p>
-        {profile && (
-          <p className="small">
-            {profile.samples} valid observations · {profile.cycles} complete
-            movements · response {Math.round(profile.smoothing * 1000)} ms
-          </p>
-        )}
-        <button
-          className="text-button"
-          disabled={!fresh}
-          onClick={() => onComplete(null)}
-        >
-          Use my two saved spots without extra tuning
-        </button>
-      </details>
-      <button
-        className="text-button centered"
-        onClick={() => {
-          capture.current.counter.invalidate();
-          attemptAt.current = Infinity;
-          setPreviewing(true);
-        }}
-      >
+      )}
+      <button className="text-button centered" onClick={onReplay}>
         Watch the movement again
-      </button>
-      <button className="text-button centered" onClick={onRetry}>
-        <RotateCcw size={13} /> Find my two spots again
       </button>
       <button className="text-button centered" onClick={onDemo}>
         Play with buttons instead
       </button>
+      <details className="grownup-fold personal-explanation">
+        <summary>Grown-up help</summary>
+        <p>
+          The range and steadiness are learned from one complete movement during
+          this attempt. No separate endpoint capture is needed. Missing or stale
+          observations cannot complete it. This calibrates game input; MediaPipe
+          remains pretrained.
+        </p>
+        <button
+          className="text-button"
+          disabled={!fresh}
+          onClick={() => done.current(null)}
+        >
+          Start with current settings
+        </button>
+      </details>
     </div>
   );
 }

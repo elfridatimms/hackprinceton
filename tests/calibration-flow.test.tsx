@@ -57,18 +57,18 @@ describe("Calibration timing and selected-arm visibility", () => {
   });
 });
 
-describe("The calibration screen that previously trapped the user", () => {
+describe("The short camera start without comfy-spot screens", () => {
   let root: Root, host: HTMLDivElement, tracking: Tracking, settings: Settings;
   const reset = vi.fn(),
-    onDemo = vi.fn(),
-    save = vi.fn();
+    save = vi.fn(),
+    onDemo = vi.fn();
   beforeEach(() => {
     vi.useFakeTimers({
       toFake: [
-        "setInterval",
-        "clearInterval",
         "setTimeout",
         "clearTimeout",
+        "setInterval",
+        "clearInterval",
         "performance",
       ],
     });
@@ -84,7 +84,7 @@ describe("The calibration screen that previously trapped the user", () => {
     host = document.createElement("div");
     document.body.append(host);
     root = createRoot(host);
-    settings = { ...defaultSettings, exercise: "elbow" };
+    settings = { ...defaultSettings };
     tracking = {
       status: "on",
       error: "",
@@ -93,15 +93,15 @@ describe("The calibration screen that previously trapped the user", () => {
         angle: null,
         at: 0,
         points: [],
-        message: "Bring your right wrist into view.",
+        message: "Show your hand.",
       },
       video: { current: null },
       start: vi.fn(),
       stop: vi.fn(),
     };
     reset.mockClear();
-    onDemo.mockClear();
     save.mockClear();
+    onDemo.mockClear();
     render();
   });
   afterEach(() => {
@@ -115,19 +115,15 @@ describe("The calibration screen that previously trapped the user", () => {
     act(() =>
       root.render(
         <Setup
-          session={
-            {
-              phase: "calibration",
-              reset,
-              transition: vi.fn(),
-            } as unknown as Session
-          }
           settings={settings}
-          setSettings={(next) => {
-            settings = next;
-            save(next);
+          setSettings={(s) => {
+            settings = s;
+            save(s);
             render();
           }}
+          session={
+            { phase: "setup", reset, transition: vi.fn() } as unknown as Session
+          }
           tracking={tracking}
           onClose={vi.fn()}
           onDemo={onDemo}
@@ -135,224 +131,116 @@ describe("The calibration screen that previously trapped the user", () => {
       ),
     );
   }
-  function frames(angle: number, valid = true, count = 6) {
-    for (let i = 0; i < count; i++) {
-      act(() => vi.advanceTimersByTime(200));
-      tracking = {
-        ...tracking,
-        frame: {
-          ...tracking.frame,
-          angle: valid ? angle : null,
-          openness: valid ? angle : null,
-          height: valid ? angle : null,
-          tilt: valid ? angle : null,
-          steering: valid ? angle : null,
-          valid,
-          at: performance.now(),
-        },
-      };
-      render();
-    }
-  }
-  function finishPreview() {
-    if (host.querySelector('[aria-label="Movement demonstration"]'))
-      act(() => vi.advanceTimersByTime(6000));
-  }
-  function holdSpot(value: number) {
-    finishPreview();
-    frames(value, true, 18);
-    finishPreview();
-  }
   function button(text: string) {
-    return Array.from(host.querySelectorAll("button")).find(
-      (b) =>
-        b.textContent?.includes(text) || b.getAttribute("aria-label") === text,
+    return Array.from(host.querySelectorAll("button")).find((b) =>
+      b.textContent?.includes(text),
     )!;
   }
   function click(text: string) {
     act(() => button(text).click());
   }
-  it("keeps the actual camera canvas, arm choice and explicit demo exit visible during calibration", () => {
+  function watch() {
+    act(() => vi.advanceTimersByTime(5600));
+  }
+  function frames(v: number, valid = true, n = 10) {
+    for (let i = 0; i < n; i++) {
+      act(() => vi.advanceTimersByTime(100));
+      tracking = {
+        ...tracking,
+        frame: {
+          valid,
+          angle: v,
+          openness: v,
+          height: v,
+          tilt: v,
+          steering: v,
+          rawValue: v,
+          at: performance.now(),
+          points: [],
+          message: valid ? "I can see your hand." : "Show your hand.",
+        },
+      };
+      render();
+    }
+  }
+  it("shows the animation first, then requests the camera only on the play button", () => {
     expect(
       host.querySelector('[aria-label="Movement demonstration"]'),
     ).not.toBeNull();
-    finishPreview();
+    expect(tracking.start).not.toHaveBeenCalled();
+    watch();
+    click("Let’s play!");
+    expect(tracking.start).toHaveBeenCalledOnce();
     expect(host.querySelector("canvas")).not.toBeNull();
-    expect(button("Left hand")).toBeTruthy();
-    expect(button("Play with buttons")).toBeTruthy();
-    expect(button("Remember this position")).toBeUndefined();
-    click("Play with buttons");
-    expect(onDemo).toHaveBeenCalledOnce();
+    expect(host.textContent).not.toMatch(/find my|comfy spot|save.*position/i);
+    expect(host.querySelector(".hold-progress")).toBeNull();
   });
-  it("captures low → tracking lost → recovered high and reaches practice", () => {
-    holdSpot(150);
-    expect(host.textContent).toContain("Bend your elbow a little.");
-    frames(65, false, 1);
-    expect(button("Remember this position")).toBeUndefined();
-    holdSpot(65);
+  it("learns one natural movement and starts the game automatically", () => {
+    watch();
+    click("Let’s play!");
+    frames(1.05);
+    frames(2.1);
+    frames(1.05);
+    expect(host.textContent).toContain("You did it!");
     expect(reset).not.toHaveBeenCalled();
-    expect(host.textContent).toContain("Your turn!");
-    frames(150);
-    frames(65);
-    frames(150);
-    frames(65);
-    frames(150);
-    click("Let’s try my magic");
-    expect(save).toHaveBeenLastCalledWith(
-      expect.objectContaining({ lower: 150, upper: 65 }),
-    );
-    expect(reset).toHaveBeenCalledWith("practice");
-  });
-  it("never lets old last-good data finish an automatic hold", () => {
-    finishPreview();
-    frames(150, true, 5);
-    act(() => vi.advanceTimersByTime(600));
-    expect(
-      host
-        .querySelector('[aria-label="Automatic position capture"]')
-        ?.getAttribute("aria-valuenow"),
-    ).toBe("0");
-    expect(host.textContent).toContain("Let your arm come down.");
-    expect(reset).not.toHaveBeenCalled();
-    holdSpot(150);
-    expect(host.textContent).toContain("Bend your elbow a little.");
-  });
-  it("waits for a different second spot rather than saving the first position twice", () => {
-    holdSpot(150);
-    frames(150, true, 30);
-    expect(host.textContent).toContain("Bend your elbow a little.");
-    expect(host.textContent).not.toContain("Your turn!");
-    expect(reset).not.toHaveBeenCalled();
-    holdSpot(65);
-    expect(host.textContent).toContain("Your turn!");
-  });
-  it("resets both endpoint history and capture readiness after an explicit arm switch", () => {
-    holdSpot(150);
-    click("Left hand");
-    expect(settings.arm).toBe("left");
-    expect(host.textContent).toContain("Let your arm come down.");
-    expect(button("Remember this position")).toBeUndefined();
-  });
-  it("offers a configured range but still requires current valid tracking", () => {
-    finishPreview();
-    expect(button("Use this range and practice").disabled).toBe(true);
-    frames(100, true, 1);
-    expect(button("Use this range and practice").disabled).toBe(false);
-    click("Use this range and practice");
-    finishPreview();
-    frames(100, true, 1);
-    click("Use my two saved spots without extra tuning");
+    act(() => vi.advanceTimersByTime(1000));
+    expect(reset).toHaveBeenCalledWith("playing");
     expect(save).toHaveBeenCalledWith(
-      expect.objectContaining({ lower: 150, upper: 65 }),
-    );
-    expect(reset).toHaveBeenCalledWith("practice");
-  });
-  it("explains near-identical positions and keeps the demo exit usable", () => {
-    holdSpot(95);
-    holdSpot(92);
-    expect(host.textContent).toContain("Bend your elbow a little.");
-    expect(reset).not.toHaveBeenCalled();
-    click("Play with buttons");
-    expect(onDemo).toHaveBeenCalledOnce();
-  });
-  it("shows the animation before capture and ignores all movement while it plays", () => {
-    settings = { ...settings, exercise: "grip" };
-    render();
-    frames(1.1, true, 5);
-    expect(
-      host.querySelector('[aria-label="Movement demonstration"]'),
-    ).not.toBeNull();
-    expect(
-      host.querySelector('[aria-label="Automatic position capture"]'),
-    ).toBeNull();
-    expect(host.querySelector("canvas")).toBeNull();
-    finishPreview();
-    expect(
-      host.querySelector('[aria-label="Movement demonstration"]'),
-    ).toBeNull();
-    expect(host.querySelector("canvas")).not.toBeNull();
-    expect(host.querySelector(".movement-guide")).toBeNull();
-    expect(
-      host
-        .querySelector('[aria-label="Automatic position capture"]')
-        ?.getAttribute("aria-valuenow"),
-    ).toBe("0");
-    expect(reset).not.toHaveBeenCalled();
-  });
-  it("calibrates a softly closed and comfortably open hand without exposing angles to the child", () => {
-    settings = { ...settings, exercise: "grip" };
-    render();
-    expect(host.textContent).toContain("Make a soft fist.");
-    finishPreview();
-    expect(
-      host.querySelector(".child-calibration-visual")?.textContent,
-    ).not.toContain("°");
-    holdSpot(1.05);
-    expect(host.textContent).toContain("Open your hand.");
-    holdSpot(2.1);
-    expect(reset).not.toHaveBeenCalled();
-    frames(1.05);
-    frames(2.1);
-    frames(1.05);
-    frames(2.1);
-    frames(1.05);
-    click("Let’s try my magic");
-    expect(save).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        exercise: "grip",
         gripLower: 1.05,
         gripUpper: 2.1,
+        personalization: expect.objectContaining({ cycles: 1 }),
       }),
     );
-    expect(reset).toHaveBeenCalledWith("practice");
   });
-  it("calibrates the butterfly game independently from finger opening", () => {
-    settings = { ...settings, exercise: "wrist" };
-    render();
-    expect(host.textContent).toContain("Rest your hand.");
-    holdSpot(12);
-    expect(host.textContent).toContain("Tilt your hand up a little.");
-    holdSpot(47);
+  it("does not turn standing still or missing tracking into a completed movement", () => {
+    watch();
+    click("Let’s play!");
+    frames(1.5, true, 40);
+    frames(1.5, false, 10);
+    expect(save).not.toHaveBeenCalled();
     expect(reset).not.toHaveBeenCalled();
-    frames(12);
-    frames(47);
-    frames(12);
-    frames(47);
-    frames(12);
-    click("Let’s try my magic");
-    expect(save).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        exercise: "wrist",
-        tiltLower: 12,
-        tiltUpper: 47,
-        gripLower: defaultSettings.gripLower,
-      }),
-    );
-    expect(reset).toHaveBeenCalledWith("practice");
+    click("Play with buttons");
+    expect(onDemo).toHaveBeenCalledOnce();
   });
-  it("captures comfortable left and right steering spots and proceeds to ship practice", () => {
-    settings = { ...settings, exercise: "ship" };
-    render();
-    expect(host.textContent).toContain("Tilt your hand left.");
-    expect(button("Left hand")).toBeUndefined();
-    holdSpot(-18);
-    expect(host.textContent).toContain("Tilt your hand right.");
-    holdSpot(22);
-    expect(reset).not.toHaveBeenCalled();
-    frames(-18);
-    frames(22);
-    frames(-18);
-    frames(22);
-    frames(-18);
-    click("Let’s try my magic");
-    expect(save).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        exercise: "ship",
-        shipLower: -18,
-        shipUpper: 22,
-        tiltLower: defaultSettings.tiltLower,
-      }),
+  it.each([
+    ["elbow", 150, 65],
+    ["wrist", 12, 47],
+    ["ship", -18, 22],
+    ["reach", -0.7, 0.1],
+  ] as const)(
+    "learns the %s range during the same brief attempt",
+    (exercise, low, high) => {
+      settings = { ...settings, exercise };
+      render();
+      watch();
+      click("Let’s play!");
+      frames(low);
+      frames(high);
+      frames(low);
+      act(() => vi.advanceTimersByTime(1000));
+      expect(reset).toHaveBeenCalledWith("playing");
+      expect(save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          exercise,
+          personalization: expect.objectContaining({
+            exercise,
+            cycles: 1,
+            lower: low,
+            upper: high,
+          }),
+        }),
+      );
+    },
+  );
+  it("offers current settings through grown-up help without pretending a scan completed", () => {
+    watch();
+    click("Let’s play!");
+    frames(1.5, true, 1);
+    click("Start with current settings");
+    expect(reset).toHaveBeenCalledWith("playing");
+    expect(save).toHaveBeenCalledWith(
+      expect.objectContaining({ personalization: null }),
     );
-    expect(reset).toHaveBeenCalledWith("practice");
   });
 });

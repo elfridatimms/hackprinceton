@@ -31,8 +31,12 @@ export function createPersonalProfile(
   holds: number[][],
   cycles: number,
   now: number,
+  minimumCycles = 2,
 ): PersonalProfile | null {
-  if (!validMovementRange(exercise, range.lower, range.upper) || cycles < 2)
+  if (
+    !validMovementRange(exercise, range.lower, range.upper) ||
+    cycles < minimumCycles
+  )
     return null;
   const samples = motion.filter(
     (s) =>
