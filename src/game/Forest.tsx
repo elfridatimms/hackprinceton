@@ -753,12 +753,24 @@ class SceneBoundary extends Component<
     );
   }
 }
-function Framing({ welcome, ship }: { welcome: boolean; ship: boolean }) {
+/** Optional fixed framing (used for presentation renders). */
+export type SceneFocus = { x: number; y: number; zoom: number };
+function Framing({
+  welcome,
+  ship,
+  focus,
+}: {
+  welcome: boolean;
+  ship: boolean;
+  focus?: SceneFocus;
+}) {
   const { camera, size } = useThree();
   useFrame(() => {
     const ortho = camera as THREE.OrthographicCamera;
     const small = size.width < 560;
-    const z = ship
+    const z = focus
+      ? focus.zoom
+      : ship
       ? welcome
         ? Math.min(61, size.width / (small ? 10 : 17))
         : Math.min(72, size.width / (small ? 9 : 12.5))
@@ -771,8 +783,16 @@ function Framing({ welcome, ship }: { welcome: boolean; ship: boolean }) {
       ortho.zoom = z;
       ortho.updateProjectionMatrix();
     }
-    const x = ship ? 0 : small ? (welcome ? 3.5 : -0.4) : 0;
-    const y = ship ? (welcome ? 0.6 : -0.2) : small && welcome ? 6.1 : 1.7;
+    const x = focus ? focus.x : ship ? 0 : small ? (welcome ? 3.5 : -0.4) : 0;
+    const y = focus
+      ? focus.y
+      : ship
+        ? welcome
+          ? 0.6
+          : -0.2
+        : small && welcome
+          ? 6.1
+          : 1.7;
     // Pirate Ship looks a little more from above so treasures can float in from afar.
     camera.position.set(x, y + (ship && !welcome ? 9 : 3.3), 22);
     camera.lookAt(x, y, 0);
@@ -797,11 +817,13 @@ export const Forest = memo(function Forest({
   welcome = false,
   exercise,
   onCollect,
+  focus,
 }: {
   world: React.RefObject<WorldState>;
   welcome?: boolean;
   exercise?: Exercise;
   onCollect: () => void;
+  focus?: SceneFocus;
 }) {
   return (
     <SceneBoundary>
@@ -823,7 +845,7 @@ export const Forest = memo(function Forest({
         }}
       >
         <RenderCadence />
-        <Framing welcome={welcome} ship={exercise === "ship"} />
+        <Framing welcome={welcome} ship={exercise === "ship"} focus={focus} />
         {exercise === "ship" ? (
           <PirateBay world={world} welcome={welcome} onCollect={onCollect} />
         ) : (
