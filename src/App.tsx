@@ -1,7 +1,7 @@
+import { MotionPreview } from "./components/MotionPreview";
 import { GameTabs } from "./components/GameTabs";
 import { MovementLesson } from "./components/MovementLesson";
 import { exercises, type Exercise } from "./movement/exercises";
-import { MovementGuide } from "./components/MovementGuide";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
@@ -49,6 +49,7 @@ export default function App() {
     [cameraOff, setCameraOff] = useState(false),
     [practiceUp, setPracticeUp] = useState(false),
     [practiceDone, setPracticeDone] = useState(false),
+    [practicePreviewDone, setPracticePreviewDone] = useState(false),
     [endingReady, setEndingReady] = useState(false);
   const [switchTarget, setSwitchTarget] = useState<Exercise | null>(null);
   const [showLesson, setShowLesson] = useState(false);
@@ -78,6 +79,7 @@ export default function App() {
         session.mode === "camera" && !!settings.personalization;
       setPracticeUp(alreadyPracticed);
       setPracticeDone(alreadyPracticed);
+      setPracticePreviewDone(alreadyPracticed);
     }
     if (session.phase === "completed") {
       setEndingReady(false);
@@ -86,11 +88,21 @@ export default function App() {
     }
   }, [session.phase]);
   useEffect(() => {
-    if (session.phase === "practice" && !session.waiting) {
+    if (
+      session.phase === "practice" &&
+      practicePreviewDone &&
+      !session.waiting
+    ) {
       if (session.position > 0.78) setPracticeUp(true);
       if (practiceUp && session.position < 0.22) setPracticeDone(true);
     }
-  }, [session.position, session.phase, session.waiting, practiceUp]);
+  }, [
+    session.position,
+    session.phase,
+    session.waiting,
+    practiceUp,
+    practicePreviewDone,
+  ]);
   const anyModal =
     !!switchTarget ||
     showLesson ||
@@ -586,62 +598,70 @@ export default function App() {
                     )}
                   </div>
                 )}
-                {session.phase === "practice" && !session.waiting && (
-                  <div className="practice-card">
-                    <div className="practice-guide">
-                      <MovementGuide
-                        key={practiceUp ? "down" : "up"}
-                        exercise={settings.exercise}
-                        direction={practiceUp ? "down" : "up"}
-                        compact
-                      />
-                    </div>
-                    <span className="eyebrow">YOUR LITTLE MAGIC MOVE</span>
-                    <h3>
-                      {practiceDone
-                        ? "You did it, little light keeper!"
-                        : practiceUp
-                          ? exercises[settings.exercise].down
-                          : exercises[settings.exercise].up}
-                    </h3>
-                    <p>
-                      {practiceDone
-                        ? settings.exercise === "grip"
-                          ? "Ready to wake the sleepy flowers?"
-                          : settings.exercise === "ship"
-                            ? "Ready to sail to Sparkle Island?"
-                            : settings.exercise === "wrist"
-                              ? "Ready to give a butterfly a breeze?"
-                              : "Ready to bring the fireflies home?"
-                        : session.mode === "demo"
-                          ? settings.exercise === "ship"
-                            ? practiceUp
-                              ? "Press ← or slide left."
-                              : "Press → or slide right."
-                            : practiceUp
-                              ? "Press ↓ or move the slider down."
-                              : "Press ↑ or move the slider up."
+                {session.phase === "practice" && !practicePreviewDone && (
+                  <div className="practice-preview-overlay">
+                    <MotionPreview
+                      exercise={settings.exercise}
+                      title={exercises[settings.exercise].title}
+                      titleId="practice-preview-title"
+                      onDone={() => {
+                        setPracticeUp(false);
+                        setPracticeDone(false);
+                        setPracticePreviewDone(true);
+                      }}
+                    />
+                  </div>
+                )}
+                {session.phase === "practice" &&
+                  practicePreviewDone &&
+                  !session.waiting && (
+                    <div className="practice-card">
+                      <span className="eyebrow">YOUR LITTLE MAGIC MOVE</span>
+                      <h3>
+                        {practiceDone
+                          ? "You did it, little light keeper!"
                           : practiceUp
                             ? exercises[settings.exercise].down
                             : exercises[settings.exercise].up}
-                    </p>
-                    {practiceDone && (
-                      <button
-                        className="button primary"
-                        onClick={() => session.reset("playing")}
-                      >
-                        {settings.exercise === "grip"
-                          ? "Let’s wake the flowers!"
-                          : settings.exercise === "ship"
-                            ? "Ahoy! Let’s sail!"
-                            : settings.exercise === "wrist"
-                              ? "Let’s help the butterflies!"
-                              : "Let’s find the fireflies"}{" "}
-                        <ArrowRight size={16} />
-                      </button>
-                    )}
-                  </div>
-                )}
+                      </h3>
+                      <p>
+                        {practiceDone
+                          ? settings.exercise === "grip"
+                            ? "Ready to wake the sleepy flowers?"
+                            : settings.exercise === "ship"
+                              ? "Ready to sail to Sparkle Island?"
+                              : settings.exercise === "wrist"
+                                ? "Ready to give a butterfly a breeze?"
+                                : "Ready to bring the fireflies home?"
+                          : session.mode === "demo"
+                            ? settings.exercise === "ship"
+                              ? practiceUp
+                                ? "Press ← or slide left."
+                                : "Press → or slide right."
+                              : practiceUp
+                                ? "Press ↓ or move the slider down."
+                                : "Press ↑ or move the slider up."
+                            : practiceUp
+                              ? exercises[settings.exercise].down
+                              : exercises[settings.exercise].up}
+                      </p>
+                      {practiceDone && (
+                        <button
+                          className="button primary"
+                          onClick={() => session.reset("playing")}
+                        >
+                          {settings.exercise === "grip"
+                            ? "Let’s wake the flowers!"
+                            : settings.exercise === "ship"
+                              ? "Ahoy! Let’s sail!"
+                              : settings.exercise === "wrist"
+                                ? "Let’s help the butterflies!"
+                                : "Let’s find the fireflies"}{" "}
+                          <ArrowRight size={16} />
+                        </button>
+                      )}
+                    </div>
+                  )}
                 {session.phase === "playing" && !session.waiting && (
                   <div className="game-encouragement">
                     <span>✦</span>

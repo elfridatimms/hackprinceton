@@ -1,4 +1,3 @@
-import { PlayAlong } from "./PlayAlong";
 import { childInstructions } from "../movement/instructions";
 import { X, Sparkles, ArrowRight } from "lucide-react";
 import { exercises, type Exercise } from "../movement/exercises";
@@ -41,12 +40,7 @@ export function MovementLesson({
         <h2 id="lesson-title">{game.title}</h2>
         <p>Watch the picture. Then copy the move.</p>
         <div className="lesson-example">
-          <PlayAlong
-            exercise={exercise}
-            direction="loop"
-            position={null}
-            watch
-          />
+          <MovementGuide exercise={exercise} />
         </div>
         <ol className="lesson-steps">
           <li>

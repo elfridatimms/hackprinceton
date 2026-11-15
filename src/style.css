@@ -5717,3 +5717,196 @@ input[type="range"] {
     font-size: 11px;
   }
 }
+
+/* Watch first. Then the camera assesses only the child's attempt. */
+.motion-preview {
+  text-align: center;
+  padding: 8px 0 17px;
+}
+.preview-label {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: #a49a72;
+  margin: 7px 0 16px;
+}
+.motion-preview h2 {
+  font-size: 29px;
+  line-height: 1.25;
+  margin-bottom: 22px;
+}
+.preview-animation {
+  background: #eef1e3;
+  border-radius: 25px;
+  padding: 15px;
+  margin-bottom: 18px;
+}
+.preview-animation > .movement-guide {
+  width: 100%;
+  max-width: 390px;
+  height: 275px;
+  margin: 0 auto;
+}
+.motion-preview > p {
+  font-size: 14px;
+  color: #94a084;
+  margin: 10px 0 19px;
+}
+.preview-progress {
+  height: 5px;
+  border-radius: 10px;
+  background: #e7ead9;
+  overflow: hidden;
+  margin: 0 15%;
+}
+.preview-progress > span {
+  display: block;
+  height: 100%;
+  background: #c2b87c;
+  transition: width 0.1s linear;
+}
+.child-calibration-visual.live-calibration {
+  display: block;
+}
+.live-calibration > .calibration-camera {
+  width: 100%;
+}
+.child-setup .live-calibration .camera-feed {
+  min-height: 230px;
+  max-height: 330px;
+}
+.live-assessment {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  align-items: start;
+  gap: 17px;
+  margin: 20px 0;
+}
+.live-assessment > .tracking-scan {
+  margin: 0;
+  min-width: 0;
+}
+.live-assessment .camera-feed {
+  min-height: 240px;
+  max-height: 310px;
+}
+.live-movement-result {
+  border: 1px solid #e1e4cf;
+  border-radius: 22px;
+  background: #f1f3e6;
+  padding: 13px;
+}
+.live-movement-result .movement-response {
+  height: 170px;
+}
+.movement-assessment {
+  padding: 13px 2px 5px;
+  text-align: center;
+}
+.movement-assessment > strong {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: #8a9e7b;
+}
+.assessment-holding > strong {
+  color: #608a62;
+}
+.assessment-waiting > strong {
+  color: #a89e7c;
+}
+.movement-task-progress {
+  height: 5px;
+  overflow: hidden;
+  margin: 13px 5px 8px;
+  border-radius: 7px;
+  background: #dce3cc;
+}
+.movement-task-progress > span {
+  display: block;
+  height: 100%;
+  background: #9db284;
+}
+.panel-game-glyph {
+  display: block;
+  width: 58px;
+  height: 58px;
+  margin: 0 auto;
+}
+.panel-game-glyph > svg {
+  width: 100%;
+  height: 100%;
+}
+.practice-preview-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  background: #f4f4e7f5;
+  padding: 25px;
+  display: grid;
+  place-items: center;
+}
+.practice-preview-overlay .motion-preview {
+  width: 100%;
+  max-width: 430px;
+}
+.practice-preview-overlay .preview-animation > .movement-guide {
+  height: 220px;
+}
+.practice-preview-overlay .motion-preview h2 {
+  font-size: 25px;
+}
+@media (max-width: 620px) {
+  .motion-preview h2 {
+    font-size: 24px;
+  }
+  .preview-animation {
+    padding: 9px;
+  }
+  .preview-animation > .movement-guide {
+    height: 230px;
+  }
+  .motion-preview > p {
+    font-size: 12px;
+  }
+  .child-setup .live-calibration .camera-feed {
+    min-height: 220px;
+    max-height: 290px;
+  }
+  .live-assessment {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .live-assessment .camera-feed {
+    min-height: 230px;
+    max-height: 270px;
+  }
+  .live-movement-result {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    align-items: center;
+    padding: 9px 14px;
+  }
+  .live-movement-result .movement-response {
+    height: 120px;
+  }
+  .live-movement-result .practice-stickers {
+    grid-column: 2;
+    margin-top: -22px;
+    margin-bottom: 8px;
+  }
+  .movement-assessment > strong {
+    font-size: 12px;
+  }
+  .practice-preview-overlay {
+    padding: 20px;
+  }
+  .practice-preview-overlay .motion-preview h2 {
+    font-size: 22px;
+  }
+  .practice-preview-overlay .preview-animation > .movement-guide {
+    height: 185px;
+  }
+}

@@ -1,4 +1,6 @@
-import { PlayAlong, PracticeStickers } from "./PlayAlong";
+import { MotionPreview } from "./MotionPreview";
+import { assessMovement } from "../movement/assessment";
+import { MovementResponse, PracticeStickers } from "./PlayAlong";
 import { childInstructions } from "../movement/instructions";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -18,7 +20,6 @@ import { exercises, movementValue, type Exercise } from "../movement/exercises";
 import { clamp, type Arm } from "../movement/core";
 import type { Tracking } from "../movement/useTracking";
 import { TrackingScan } from "./TrackingScan";
-import { MovementGuide } from "./MovementGuide";
 export function PersonalTune({
   tracking,
   exercise,
@@ -39,6 +40,8 @@ export function PersonalTune({
   onDemo: () => void;
 }) {
   const capture = useRef(new PersonalMotionCapture());
+  const [previewing, setPreviewing] = useState(true);
+  const attemptAt = useRef(Infinity);
   const [now, setNow] = useState(performance.now()),
     [count, setCount] = useState(0),
     [profile, setProfile] = useState<PersonalProfile | null>(null);
@@ -56,7 +59,7 @@ export function PersonalTune({
     return () => clearInterval(id);
   }, []);
   useEffect(() => {
-    if (profile) return;
+    if (profile || previewing || f.at < attemptAt.current) return;
     capture.current.update(f, exercise, range, performance.now());
     setCount(capture.current.counter.count);
     if (capture.current.counter.count >= 2) {
@@ -91,7 +94,7 @@ export function PersonalTune({
       );
       if (learned) setProfile(learned);
     }
-  }, [f, now, profile, exercise, arm, range, holds]);
+  }, [f, now, profile, previewing, exercise, arm, range, holds]);
   const instruction = childInstructions[exercise];
   const phase = capture.current.counter.phase;
   const currentInstruction =
@@ -101,6 +104,22 @@ export function PersonalTune({
     fresh && value !== null
       ? clamp((value - range.lower) / (range.upper - range.lower))
       : null;
+  const assessment = assessMovement(
+    position,
+    phase === "seek-high" ? "high" : "low",
+  );
+  if (previewing)
+    return (
+      <MotionPreview
+        exercise={exercise}
+        title={childInstructions[exercise].goal}
+        onDone={() => {
+          capture.current.counter.invalidate();
+          attemptAt.current = performance.now();
+          setPreviewing(false);
+        }}
+      />
+    );
   return (
     <div className="personal-tune">
       <span className="scan-eyebrow">
@@ -110,35 +129,35 @@ export function PersonalTune({
       <p>
         {profile
           ? "Your little adventure is ready."
-          : "Copy the hand. Watch what happens!"}
+          : "I’m watching your movement."}
       </p>
-      <div className="visual-practice">
-        <div>
-          <PlayAlong
-            exercise={exercise}
-            direction={profile ? "high" : direction}
-            position={position}
-          />
-          <PracticeStickers count={profile ? 2 : count} />
-          {!profile && (
-            <div className="copy-step-hint">
-              <span>{Math.min(count, 2)} of 2 little moves</span>
-              <p>
-                {fresh
-                  ? "A little pause. Then the next move."
-                  : tracking.frame.message}
-              </p>
+      <div className="live-assessment">
+        <TrackingScan
+          tracking={tracking}
+          exercise={exercise}
+          arm={arm}
+          range={range}
+        />
+        <div className="live-movement-result">
+          <MovementResponse exercise={exercise} position={position} />
+          <div
+            className={`movement-assessment assessment-${assessment.state}`}
+            role="status"
+            aria-live="polite"
+          >
+            <strong>{profile ? "You did it!" : assessment.message}</strong>
+            <div
+              className="movement-task-progress"
+              role="progressbar"
+              aria-label="Progress towards the current movement"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(assessment.progress * 100)}
+            >
+              <span style={{ width: `${assessment.progress * 100}%` }} />
             </div>
-          )}
-        </div>
-        <div className="practice-camera">
-          <TrackingScan
-            tracking={tracking}
-            exercise={exercise}
-            arm={arm}
-            range={range}
-            compact
-          />
+          </div>
+          <PracticeStickers count={profile ? 2 : count} />
         </div>
       </div>
       {profile && (
@@ -186,6 +205,16 @@ export function PersonalTune({
           Use my two saved spots without extra tuning
         </button>
       </details>
+      <button
+        className="text-button centered"
+        onClick={() => {
+          capture.current.counter.invalidate();
+          attemptAt.current = Infinity;
+          setPreviewing(true);
+        }}
+      >
+        Watch the movement again
+      </button>
       <button className="text-button centered" onClick={onRetry}>
         <RotateCcw size={13} /> Find my two spots again
       </button>

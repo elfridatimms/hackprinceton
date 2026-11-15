@@ -1,4 +1,4 @@
-import { MovementGuide } from "./MovementGuide";
+import { GameGlyph } from "./GameTabs";
 import { exercises, type Exercise } from "../movement/exercises";
 import { useEffect, useRef } from "react";
 import {
@@ -261,7 +261,9 @@ export function InputPanel({
         <>
           <div className="panel-inner">
             <div className="panel-move-example">
-              <MovementGuide exercise={exercise} compact />
+              <span className="panel-game-glyph">
+                <GameGlyph exercise={exercise} />
+              </span>
               <strong>{exercises[exercise].short}</strong>
               {onLesson && (
                 <button className="watch-again-button" onClick={onLesson}>

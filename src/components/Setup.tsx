@@ -1,4 +1,4 @@
-import { PlayAlong } from "./PlayAlong";
+import { MotionPreview, ACTION_PREVIEW_MS } from "./MotionPreview";
 import { childInstructions } from "../movement/instructions";
 import { PersonalTune } from "./PersonalTune";
 import { TrackingScan } from "./TrackingScan";
@@ -86,6 +86,9 @@ export function Setup({
   const instruction = childInstructions[settings.exercise];
   const value = movementValue(tracking.frame, settings.exercise);
   const stage = tuning ? 3 : session.phase === "calibration" ? 2 : step;
+  const previewKey = `${stage}:${settings.exercise}:${settings.arm}:${endpoint}`;
+  const [finishedPreview, setFinishedPreview] = useState<string | null>(null);
+  const demonstrating = stage === 2 && finishedPreview !== previewKey;
   useEffect(() => {
     const timer = setInterval(() => setNow(performance.now()), 100);
     return () => clearInterval(timer);
@@ -99,6 +102,7 @@ export function Setup({
     const f = tracking.frame;
     if (
       stage !== 2 ||
+      demonstrating ||
       manual ||
       !eligible ||
       !f.valid ||
@@ -118,7 +122,7 @@ export function Setup({
       (s) => performance.now() - s.at <= AUTO_SPOT_WINDOW_MS,
     );
     setNow(performance.now());
-  }, [tracking.frame, value, eligible, stage, manual]);
+  }, [tracking.frame, value, eligible, stage, manual, demonstrating]);
   const clockNow = Math.max(now, performance.now());
   const fresh =
     tracking.status === "on" &&
@@ -206,6 +210,7 @@ export function Setup({
   useEffect(() => {
     if (
       stage === 2 &&
+      !demonstrating &&
       !manual &&
       eligible &&
       fresh &&
@@ -215,6 +220,7 @@ export function Setup({
       capture();
   }, [
     stage,
+    demonstrating,
     endpoint,
     manual,
     eligible,
@@ -233,7 +239,9 @@ export function Setup({
       : null;
   const preparing = now < autoReadyAt.current;
   const autoProgress =
-    fresh && eligible && !manual && !preparing ? estimate.progress : 0;
+    fresh && eligible && !manual && !preparing && !demonstrating
+      ? estimate.progress
+      : 0;
   const countdown = Math.max(1, Math.ceil((1 - autoProgress) * 3));
   const armPicker = (
     <div
@@ -300,12 +308,25 @@ export function Setup({
             onComplete={completeScan}
             onRetry={() => {
               setTuning(null);
+              setFinishedPreview(null);
               holds.current = [];
               setLower(null);
               setEndpoint("lower");
               resetHold();
             }}
             onDemo={onDemo}
+          />
+        ) : demonstrating ? (
+          <MotionPreview
+            key={previewKey}
+            exercise={settings.exercise}
+            direction={endpoint === "lower" ? "down" : "up"}
+            title={endpoint === "lower" ? instruction.low : instruction.high}
+            duration={ACTION_PREVIEW_MS}
+            onDone={() => {
+              resetHold();
+              setFinishedPreview(previewKey);
+            }}
           />
         ) : stage === 0 ? (
           <>
@@ -317,12 +338,7 @@ export function Setup({
               <span className="watch-badge">
                 <Sparkles size={12} /> Watch, then try!
               </span>
-              <PlayAlong
-                exercise={settings.exercise}
-                direction="loop"
-                position={null}
-                watch
-              />
+              <MovementGuide exercise={settings.exercise} />
               <div className="movement-steps">
                 <span>
                   <b>1</b>
@@ -393,6 +409,7 @@ export function Setup({
               className="button primary full"
               onClick={() => {
                 setStep(1);
+                setFinishedPreview(null);
                 void tracking.start();
               }}
             >
@@ -461,19 +478,14 @@ export function Setup({
             <div className="little-mission">
               <span>{endpoint === "lower" ? "1" : "2"}</span>
               <div>
-                <small>COPY THIS LITTLE MOVE</small>
+                <small>YOUR TURN · LIVE CAMERA</small>
                 <h2 id="setup-title">
                   {endpoint === "lower" ? instruction.low : instruction.high}
                 </h2>
               </div>
             </div>
             <p>{instruction.tip}</p>
-            <div className="child-calibration-visual visual-instructions">
-              <PlayAlong
-                exercise={settings.exercise}
-                direction={endpoint === "lower" ? "low" : "high"}
-                position={previewPosition}
-              />
+            <div className="child-calibration-visual live-calibration">
               <div className="calibration-camera">
                 <TrackingScan
                   tracking={tracking}
@@ -554,6 +566,15 @@ export function Setup({
             >
               <span style={{ width: `${autoProgress * 100}%` }} />
             </div>
+            <button
+              className="text-button centered"
+              onClick={() => {
+                resetHold();
+                setFinishedPreview(null);
+              }}
+            >
+              Watch the movement again
+            </button>
             {endpoint === "upper" && (
               <button
                 className="text-button centered"
@@ -679,6 +700,7 @@ export function Setup({
               setEndpoint("lower");
               setCaptureError("");
               resetHold();
+              setFinishedPreview(null);
               void tracking.start();
             }}
           />

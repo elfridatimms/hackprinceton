@@ -1,7 +1,6 @@
 import { useRef } from "react";
 import { clamp } from "../movement/core";
 import type { Exercise } from "../movement/exercises";
-import { MovementGuide } from "./MovementGuide";
 import { Portrait } from "./Illustrations";
 
 export function MovementResponse({
@@ -225,50 +224,6 @@ export function MovementResponse({
           fill="#d3bd79"
         />
       </svg>
-    </div>
-  );
-}
-export function PlayAlong({
-  exercise,
-  direction,
-  position,
-  watch = false,
-}: {
-  exercise: Exercise;
-  direction: "loop" | "up" | "down" | "low" | "high";
-  position: number | null;
-  watch?: boolean;
-}) {
-  return (
-    <div className="play-along">
-      <div className="play-along-side copy-move">
-        <span className="picture-label">
-          {watch ? "Watch the hand" : "Copy this"}
-        </span>
-        <MovementGuide
-          key={direction}
-          exercise={exercise}
-          direction={direction}
-          handOnly
-        />
-      </div>
-      <span className="picture-arrow" aria-hidden="true">
-        ↝
-      </span>
-      <div className="play-along-side">
-        <span className="picture-label">
-          {watch
-            ? "Make a little magic"
-            : position === null
-              ? "I’m waiting for you"
-              : "You make it happen!"}
-        </span>
-        <MovementResponse
-          exercise={exercise}
-          position={position}
-          watch={watch}
-        />
-      </div>
     </div>
   );
 }

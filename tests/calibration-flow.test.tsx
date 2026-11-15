@@ -154,8 +154,14 @@ describe("The calibration screen that previously trapped the user", () => {
       render();
     }
   }
+  function finishPreview() {
+    if (host.querySelector('[aria-label="Movement demonstration"]'))
+      act(() => vi.advanceTimersByTime(6000));
+  }
   function holdSpot(value: number) {
+    finishPreview();
     frames(value, true, 18);
+    finishPreview();
   }
   function button(text: string) {
     return Array.from(host.querySelectorAll("button")).find(
@@ -167,6 +173,10 @@ describe("The calibration screen that previously trapped the user", () => {
     act(() => button(text).click());
   }
   it("keeps the actual camera canvas, arm choice and explicit demo exit visible during calibration", () => {
+    expect(
+      host.querySelector('[aria-label="Movement demonstration"]'),
+    ).not.toBeNull();
+    finishPreview();
     expect(host.querySelector("canvas")).not.toBeNull();
     expect(button("Left hand")).toBeTruthy();
     expect(button("Play with buttons")).toBeTruthy();
@@ -194,7 +204,8 @@ describe("The calibration screen that previously trapped the user", () => {
     expect(reset).toHaveBeenCalledWith("practice");
   });
   it("never lets old last-good data finish an automatic hold", () => {
-    frames(150, true, 10);
+    finishPreview();
+    frames(150, true, 5);
     act(() => vi.advanceTimersByTime(600));
     expect(
       host
@@ -223,10 +234,13 @@ describe("The calibration screen that previously trapped the user", () => {
     expect(button("Remember this position")).toBeUndefined();
   });
   it("offers a configured range but still requires current valid tracking", () => {
+    finishPreview();
     expect(button("Use this range and practice").disabled).toBe(true);
     frames(100, true, 1);
     expect(button("Use this range and practice").disabled).toBe(false);
     click("Use this range and practice");
+    finishPreview();
+    frames(100, true, 1);
     click("Use my two saved spots without extra tuning");
     expect(save).toHaveBeenCalledWith(
       expect.objectContaining({ lower: 150, upper: 65 }),
@@ -241,35 +255,35 @@ describe("The calibration screen that previously trapped the user", () => {
     click("Play with buttons");
     expect(onDemo).toHaveBeenCalledOnce();
   });
-  it("shows the game response only from fresh camera movement and pauses it on loss", () => {
+  it("shows the animation before capture and ignores all movement while it plays", () => {
     settings = { ...settings, exercise: "grip" };
     render();
-    frames(1.1, true, 1);
+    frames(1.1, true, 5);
     expect(
-      host.querySelector(".movement-response")?.getAttribute("data-position"),
-    ).toBe("0.000");
-    frames(1.65, true, 1);
+      host.querySelector('[aria-label="Movement demonstration"]'),
+    ).not.toBeNull();
     expect(
-      Number(
-        host.querySelector(".movement-response")?.getAttribute("data-position"),
-      ),
-    ).toBeCloseTo(0.5);
-    const petals = host
-      .querySelector(".response-petals")
-      ?.getAttribute("style");
-    frames(1.65, false, 1);
-    expect(host.querySelector(".response-petals")?.getAttribute("style")).toBe(
-      petals,
-    );
+      host.querySelector('[aria-label="Automatic position capture"]'),
+    ).toBeNull();
+    expect(host.querySelector("canvas")).toBeNull();
+    finishPreview();
     expect(
-      host.querySelector(".movement-response")?.getAttribute("data-position"),
-    ).toBe("waiting");
-    expect(host.querySelector(".response-waiting")).not.toBeNull();
+      host.querySelector('[aria-label="Movement demonstration"]'),
+    ).toBeNull();
+    expect(host.querySelector("canvas")).not.toBeNull();
+    expect(host.querySelector(".movement-guide")).toBeNull();
+    expect(
+      host
+        .querySelector('[aria-label="Automatic position capture"]')
+        ?.getAttribute("aria-valuenow"),
+    ).toBe("0");
+    expect(reset).not.toHaveBeenCalled();
   });
   it("calibrates a softly closed and comfortably open hand without exposing angles to the child", () => {
     settings = { ...settings, exercise: "grip" };
     render();
     expect(host.textContent).toContain("Make a soft fist.");
+    finishPreview();
     expect(
       host.querySelector(".child-calibration-visual")?.textContent,
     ).not.toContain("°");
