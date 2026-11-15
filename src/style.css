@@ -6933,3 +6933,7 @@ input[type="range"] {
 .demo-clip-actions button:disabled {
   opacity: 0.5;
 }
+
+.brand-habit {
+  color: #5b8061;
+}

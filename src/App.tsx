@@ -88,26 +88,6 @@ function Cheer({ count, streak }: { count: number; streak: number }) {
     </div>
   );
 }
-/** Rehabbit (rehab + habit) mark: an original little bunny with one ear bent mid-stretch. */
-function BunnyMark() {
-  return (
-    <svg viewBox="0 0 48 52" aria-hidden="true">
-      <path d="M15 22C11 12 11 4 15 2c4-1 6 8 6 18" fill="#f3e6d3" stroke="#2a5949" strokeWidth="2" />
-      <path d="M17 18c-1-6-1-11 0-12" stroke="#e9a7a0" strokeWidth="2.2" strokeLinecap="round" />
-      <path d="M27 20c2-9 8-15 13-13 3 2-2 9-7 15" fill="#f3e6d3" stroke="#2a5949" strokeWidth="2" />
-      <path d="M31 17c2-4 5-7 7-8" stroke="#e9a7a0" strokeWidth="2.2" strokeLinecap="round" />
-      <ellipse cx="24" cy="34" rx="16" ry="14" fill="#f8efe2" stroke="#2a5949" strokeWidth="2" />
-      <circle cx="18" cy="32" r="2.2" fill="#24483e" />
-      <circle cx="30" cy="32" r="2.2" fill="#24483e" />
-      <circle cx="18.7" cy="31.2" r="0.7" fill="#fff" />
-      <circle cx="30.7" cy="31.2" r="0.7" fill="#fff" />
-      <path d="M22 37.5h4l-2 2z" fill="#e58f86" />
-      <path d="M24 39.5c-1 2-3 2.4-4.4 1.6M24 39.5c1 2 3 2.4 4.4 1.6" stroke="#2a5949" strokeWidth="1.4" fill="none" strokeLinecap="round" />
-      <ellipse cx="13.5" cy="38" rx="3" ry="1.8" fill="#f2b8aa" opacity=".7" />
-      <ellipse cx="34.5" cy="38" rx="3" ry="1.8" fill="#f2b8aa" opacity=".7" />
-    </svg>
-  );
-}
 /** Today's prescribed games on the start screen, with reps done so far. */
 function TodayPlan({
   plan,
@@ -427,13 +407,14 @@ export default function App() {
         </div>
       )}
       <header className="header">
-        <button className="brand" onClick={home} aria-label="Rehabbit home">
+        <button className="brand" onClick={home} aria-label="reHabit home">
           <span className="brand-mark">
-            <BunnyMark />
+            <Portrait />
           </span>
           <span>
             <strong>
-              rehabbit<span className="brand-spark">✧</span>
+              re<span className="brand-habit">Habit</span>
+              <span className="brand-spark">✧</span>
             </strong>
             <small>REHAB THAT BECOMES A HABIT</small>
           </span>

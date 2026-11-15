@@ -1,8 +1,8 @@
-# Rehabbit · hackathon pitch
+# reHabit · hackathon pitch
 
-**One line:** *Rehabbit = rehab + habit. It turns a child's boring home physio exercises into camera games they want to play every day, and turns every game into a progress report the therapist can actually use.*
+**One line:** *reHabit = rehab + habit. It turns a child's boring home physio exercises into camera games they want to play every day, and turns every game into a progress report the therapist can actually use.*
 
-**The name, in one sentence (say it early):** "Rehabbit: rehab plus habit. Recovery happens when exercises become a daily habit, and our bunny keeps kids hopping."
+**The name, in one sentence (say it early):** "reHabit: rehab plus habit. Recovery happens when exercises become a daily habit, and games are how a child builds one."
 
 Total time: about 3 minutes + questions. Two people: **Speaker** (story, numbers) and **Driver** (laptop, never talks while the demo runs).
 
@@ -40,7 +40,7 @@ Total time: about 3 minutes + questions. Two people: **Speaker** (story, numbers
 
 ## 2:45 – 3:00 · Close (Speaker)
 
-> "Kids get a game they want to play every day. Therapists get the numbers they never had. Rehabbit: rehab that becomes a habit."
+> "Kids get a game they want to play every day. Therapists get the numbers they never had. reHabit: rehab that becomes a habit."
 
 What's next (only if asked or if time allows): therapist sends the plan as a link/QR, compensation detection (e.g. lifting the shoulder instead of bending the elbow), more joints.
 

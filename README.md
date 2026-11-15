@@ -1,6 +1,6 @@
-# Rehabbit
+# reHabit
 
-*Rehab that becomes a habit.* The name is rehab + habit: recovery happens when small home exercises become a daily habit. Kids do them by playing camera games (the bunny keeps them hopping); the camera measures the movement on the device, and therapists see consistency and progress.
+*Rehab that becomes a habit.* The name is rehab + habit: recovery happens when small home exercises become a daily habit. Kids do them by playing camera games with Luma the little dragon; the camera measures the movement on the device, and therapists see consistency and progress.
 
 Luma the little dragon is the guide inside the games.
 
