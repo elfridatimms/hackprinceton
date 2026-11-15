@@ -1,6 +1,11 @@
 // @vitest-environment jsdom
 import { afterEach, describe, it, expect, vi } from "vitest";
 const vision = vi.hoisted(() => ({ hand: vi.fn(), resolve: vi.fn() }));
+const runtime = vi.hoisted(() => ({ load: vi.fn() }));
+vi.mock("../src/movement/holisticRuntime", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  loadHolisticRuntime: runtime.load,
+}));
 vi.mock("@mediapipe/tasks-vision", () => ({
   FilesetResolver: { forVisionTasks: vision.resolve },
   HandLandmarker: { createFromOptions: vision.hand },
@@ -10,9 +15,12 @@ import {
   PlayingHand,
   preferredArm,
 } from "../src/movement/trackerEngine";
+const image = () =>
+  Object.assign(document.createElement("canvas"), {
+    getContext: () => ({ drawImage: vi.fn() }),
+  });
 describe("MediaPipe engine selection and repository settings", () => {
   afterEach(() => {
-    delete window.Holistic;
     vi.clearAllMocks();
   });
   it.each(["elbow", "ship", "wrist"] as const)(
@@ -21,15 +29,14 @@ describe("MediaPipe engine selection and repository settings", () => {
       let callback: (r: object) => void = () => {};
       const options = vi.fn(),
         close = vi.fn().mockResolvedValue(undefined),
-        send = vi
-          .fn()
-          .mockImplementation(async () =>
-            callback({
-              poseLandmarks: [{ x: 0.2, y: 0.3, visibility: 0.9 }],
-              leftHandLandmarks: [{ x: 0.4, y: 0.5 }],
-            }),
-          );
-      window.Holistic = class {
+        send = vi.fn().mockImplementation(async () =>
+          callback({
+            poseLandmarks: [{ x: 0.2, y: 0.3, visibility: 0.9 }],
+            leftHandLandmarks: [{ x: 0.4, y: 0.5 }],
+          }),
+        );
+      const dispose = vi.fn();
+      const Holistic = class {
         constructor(public input: { locateFile: (n: string) => string }) {
           expect(input.locateFile("holistic.binarypb")).toBe(
             "/mediapipe/holistic/holistic.binarypb",
@@ -42,7 +49,8 @@ describe("MediaPipe engine selection and repository settings", () => {
         initialize = async () => {};
         send = send;
         close = close;
-      } as unknown as typeof window.Holistic;
+      };
+      runtime.load.mockResolvedValue({ Holistic, dispose, image: image() });
       const engine = await createVisionEngine(exercise);
       expect(options).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -52,11 +60,19 @@ describe("MediaPipe engine selection and repository settings", () => {
           minTrackingConfidence: 0.3,
         }),
       );
-      const r = await engine.detect(document.createElement("video"), 10);
+      const video = document.createElement("video");
+      Object.defineProperty(video, "videoWidth", { value: 640 });
+      Object.defineProperty(video, "videoHeight", { value: 480 });
+      const r = await engine.detect(video, 10);
+      expect(send.mock.calls[0][0].image).not.toBe(video);
+      expect(send.mock.calls[0][0].image.width).toBe(640);
       expect(r.pose).toHaveLength(1);
       expect(r.hands[0].label).toBe("Left");
       engine.close();
-      await vi.waitFor(() => expect(close).toHaveBeenCalled());
+      await vi.waitFor(() => {
+        expect(close).toHaveBeenCalled();
+        expect(dispose).toHaveBeenCalled();
+      });
     },
   );
   it.each(["reach", "grip"] as const)(
@@ -78,6 +94,66 @@ describe("MediaPipe engine selection and repository settings", () => {
       );
     },
   );
+  it("disposes a failed initialization and gives the next attempt a fresh runtime", async () => {
+    const badDispose = vi.fn(),
+      goodDispose = vi.fn();
+    class Broken {
+      setOptions() {}
+      onResults() {}
+      initialize() {
+        return Promise.reject(new Error("Aborted(Module.arguments)"));
+      }
+    }
+    class Ready {
+      setOptions() {}
+      onResults() {}
+      initialize() {
+        return Promise.resolve();
+      }
+      close() {
+        return Promise.resolve();
+      }
+    }
+    runtime.load
+      .mockResolvedValueOnce({
+        Holistic: Broken,
+        dispose: badDispose,
+        image: image(),
+      })
+      .mockResolvedValueOnce({
+        Holistic: Ready,
+        dispose: goodDispose,
+        image: image(),
+      });
+    await expect(createVisionEngine("elbow")).rejects.toThrow(
+      "Module.arguments",
+    );
+    expect(badDispose).toHaveBeenCalledOnce();
+    const engine = await createVisionEngine("elbow");
+    engine.close();
+    await vi.waitFor(() => expect(goodDispose).toHaveBeenCalledOnce());
+  });
+  it("cancels a pending initialization and releases its frame", async () => {
+    const dispose = vi.fn();
+    class Pending {
+      setOptions() {}
+      onResults() {}
+      initialize() {
+        return new Promise<void>(() => {});
+      }
+    }
+    runtime.load.mockResolvedValue({
+      Holistic: Pending,
+      dispose,
+      image: image(),
+    });
+    const controller = new AbortController();
+    const result = createVisionEngine("wrist", controller.signal);
+    await Promise.resolve();
+    controller.abort();
+    await expect(result).rejects.toMatchObject({ name: "AbortError" });
+    expect(dispose).toHaveBeenCalled();
+  });
   it("uses visibility hysteresis instead of flipping arm at similar confidences", () => {
     const p = Array.from({ length: 33 }, () => ({
       x: 0.5,

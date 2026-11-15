@@ -1,3 +1,8 @@
+import {
+  loadHolisticRuntime,
+  trackingAborted,
+  type Holistic,
+} from "./holisticRuntime";
 import type { Landmark, Arm } from "./core";
 import type { Exercise } from "./exercises";
 
@@ -12,46 +17,10 @@ export type VisionEngine = {
   detect: (video: HTMLVideoElement, at: number) => Promise<Observation>;
   close: () => void;
 };
-type HolisticResult = {
-  poseLandmarks?: Landmark[];
-  leftHandLandmarks?: Landmark[];
-  rightHandLandmarks?: Landmark[];
-};
-type Holistic = {
-  setOptions: (options: Record<string, unknown>) => void;
-  onResults: (callback: (r: HolisticResult) => void) => void;
-  initialize: () => Promise<void>;
-  send: (input: { image: HTMLVideoElement }) => Promise<void>;
-  close: () => Promise<void>;
-};
-declare global {
-  interface Window {
-    Holistic?: new (options: {
-      locateFile: (name: string) => string;
-    }) => Holistic;
-  }
-}
-let holisticScript: Promise<void> | null = null;
-function loadHolistic() {
-  if (window.Holistic) return Promise.resolve();
-  if (!holisticScript)
-    holisticScript = new Promise<void>((resolve, reject) => {
-      const script = document.createElement("script");
-      script.src = "/mediapipe/holistic/holistic.js";
-      script.onload = () => resolve();
-      script.onerror = () => {
-        holisticScript = null;
-        script.remove();
-        reject(new Error("The arm tracker could not load. Try reconnecting."));
-      };
-      document.head.append(script);
-    });
-  return holisticScript;
-}
-
 /** Same Holistic engine/options as final-thesis-demo; assets are served locally. */
 export async function createVisionEngine(
   exercise: Exercise,
+  signal?: AbortSignal,
 ): Promise<VisionEngine> {
   if (exercise === "grip" || exercise === "reach") {
     const { FilesetResolver, HandLandmarker } =
@@ -68,6 +37,10 @@ export async function createVisionEngine(
       minHandPresenceConfidence: 0.3,
       minTrackingConfidence: 0.3,
     });
+    if (signal?.aborted) {
+      detector.close();
+      throw trackingAborted();
+    }
     return {
       name: "Hand Landmarker · CPU",
       detect: async (video, at) => {
@@ -84,20 +57,37 @@ export async function createVisionEngine(
       close: () => detector.close(),
     };
   }
-  await loadHolistic();
-  if (!window.Holistic) throw new Error("The arm tracker is unavailable.");
-  const holistic = new window.Holistic({
-    locateFile: (name) => `/mediapipe/holistic/${name}`,
-  });
-  holistic.setOptions({
-    modelComplexity: 1,
-    smoothLandmarks: true,
-    enableSegmentation: false,
-    smoothSegmentation: false,
-    refineFaceLandmarks: false,
-    minDetectionConfidence: 0.3,
-    minTrackingConfidence: 0.3,
-  });
+  const runtime = await loadHolisticRuntime(signal);
+  if (signal?.aborted) {
+    runtime.dispose();
+    throw trackingAborted();
+  }
+  let holistic: Holistic;
+  const image = runtime.image;
+  let context: CanvasRenderingContext2D;
+  try {
+    holistic = new runtime.Holistic({
+      locateFile: (name) => `/mediapipe/holistic/${name}`,
+    });
+    holistic.setOptions({
+      modelComplexity: 1,
+      smoothLandmarks: true,
+      enableSegmentation: false,
+      smoothSegmentation: false,
+      refineFaceLandmarks: false,
+      minDetectionConfidence: 0.3,
+      minTrackingConfidence: 0.3,
+    });
+    const drawing = image.getContext("2d", { alpha: false });
+    if (!drawing)
+      throw new Error(
+        "The movement tracker could not read the camera picture.",
+      );
+    context = drawing;
+  } catch (e) {
+    runtime.dispose();
+    throw e;
+  }
   let latest: Observation = { pose: [], hands: [] };
   let sending = Promise.resolve();
   holistic.onResults((r) => {
@@ -115,25 +105,52 @@ export async function createVisionEngine(
         score: 1,
       });
   });
+  let cancelInitialize: (() => void) | undefined;
+  const cancelled = new Promise<never>((_, reject) => {
+    cancelInitialize = () => {
+      runtime.dispose();
+      reject(trackingAborted());
+    };
+    signal?.addEventListener("abort", cancelInitialize, { once: true });
+  });
   try {
-    await holistic.initialize();
+    await Promise.race([holistic.initialize(), cancelled]);
   } catch (e) {
-    void holistic.close();
+    // A failed initialization is never reused by a retry.
+    runtime.dispose();
     throw e;
+  } finally {
+    if (cancelInitialize)
+      signal?.removeEventListener("abort", cancelInitialize);
   }
+  let closed = false;
   return {
     name: "MediaPipe Holistic · smoothed landmarks",
     detect: async (video) => {
       latest = { pose: [], hands: [] };
-      sending = holistic.send({ image: video });
+      // Holistic uses realm-specific element checks. Copy into its own canvas so
+      // a video from the parent window cannot be mistaken for a zero-sized image.
+      if (video.videoWidth <= 0 || video.videoHeight <= 0) return latest;
+      if (
+        image.width !== video.videoWidth ||
+        image.height !== video.videoHeight
+      ) {
+        image.width = video.videoWidth;
+        image.height = video.videoHeight;
+      }
+      context.drawImage(video, 0, 0, image.width, image.height);
+      sending = holistic.send({ image });
       await sending;
       return latest;
     },
     close: () => {
+      if (closed) return;
+      closed = true;
       void sending
         .catch(() => {})
         .then(() => holistic.close())
-        .catch(() => {});
+        .catch(() => {})
+        .finally(() => runtime.dispose());
     },
   };
 }

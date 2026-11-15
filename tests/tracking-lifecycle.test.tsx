@@ -54,12 +54,10 @@ describe("Camera lifecycle and fresh movement observations", () => {
     arm = "right";
     time = 1;
     stop = vi.fn();
-    request = vi
-      .fn()
-      .mockResolvedValue({
-        getTracks: () => [{ stop }],
-        getVideoTracks: () => [{ addEventListener: vi.fn() }],
-      });
+    request = vi.fn().mockResolvedValue({
+      getTracks: () => [{ stop }],
+      getVideoTracks: () => [{ addEventListener: vi.fn() }],
+    });
     Object.defineProperty(navigator, "mediaDevices", {
       configurable: true,
       value: { getUserMedia: request },
@@ -82,13 +80,11 @@ describe("Camera lifecycle and fresh movement observations", () => {
     );
     engine.close.mockReset();
     engine.detect.mockReset().mockResolvedValue({ pose: armPose(), hands: [] });
-    engine.create
-      .mockReset()
-      .mockResolvedValue({
-        name: "MediaPipe test engine",
-        detect: engine.detect,
-        close: engine.close,
-      });
+    engine.create.mockReset().mockResolvedValue({
+      name: "MediaPipe test engine",
+      detect: engine.detect,
+      close: engine.close,
+    });
     act(() => root.render(<Probe />));
   });
   afterEach(() => {
@@ -103,7 +99,10 @@ describe("Camera lifecycle and fresh movement observations", () => {
     await act(async () => {
       await tracking.start();
     });
-    expect(engine.create).toHaveBeenCalledWith("elbow");
+    expect(engine.create).toHaveBeenCalledWith(
+      "elbow",
+      expect.any(AbortSignal),
+    );
     expect(tracking.frame.valid).toBe(true);
     expect(tracking.frame.angle).toBe(90);
     expect(tracking.video.current?.isConnected).toBe(true);
@@ -132,6 +131,61 @@ describe("Camera lifecycle and fresh movement observations", () => {
     expect(tracking.error).toContain("WASM load failed");
     expect(stop).toHaveBeenCalled();
     expect(document.querySelector("video")).toBeNull();
+  });
+  it("keeps technical startup failures in diagnostics and recovers on a fresh retry", async () => {
+    engine.create.mockRejectedValueOnce(
+      new Error(
+        "Aborted(Module.arguments has been replaced with plain arguments_)",
+      ),
+    );
+    await act(async () => {
+      await tracking.start();
+    });
+    expect(tracking.status).toBe("error");
+    expect(tracking.error).toBe(
+      "The movement tracker couldn’t start. Try the camera again.",
+    );
+    expect(tracking.diagnostics?.lastError).toContain("Module.arguments");
+    await act(async () => {
+      await tracking.start();
+    });
+    expect(tracking.status).toBe("on");
+    expect(tracking.frame.valid).toBe(true);
+    expect(tracking.error).toBe("");
+  });
+  it("cancels an older loading game when another game is selected", async () => {
+    let release!: (value: object) => void;
+    const oldClose = vi.fn();
+    engine.create.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          release = resolve;
+        }),
+    );
+    let first!: Promise<void>;
+    await act(async () => {
+      first = tracking.start();
+      await Promise.resolve();
+    });
+    expect(engine.create).toHaveBeenCalledOnce();
+    const firstSignal = engine.create.mock.calls[0][1] as AbortSignal;
+    exercise = "grip";
+    engine.detect.mockResolvedValue({
+      pose: [],
+      hands: [{ points: hand(), label: "Right", score: 0.9 }],
+    });
+    await act(async () => {
+      root.render(<Probe />);
+    });
+    expect(firstSignal.aborted).toBe(true);
+    await act(async () => {
+      release({ name: "old engine", detect: engine.detect, close: oldClose });
+      await first;
+    });
+    expect(oldClose).toHaveBeenCalledOnce();
+    expect(tracking.status).toBe("on");
+    expect(tracking.frame.openness).toBeGreaterThan(2);
+    expect(tracking.frame.angle).toBeNull();
   });
   it("reports denied permission without switching to demo or loading the tracker", async () => {
     request.mockRejectedValueOnce(

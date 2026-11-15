@@ -53,7 +53,7 @@ export function useTracking(
     [error, setError] = useState(""),
     [frame, setFrame] = useState<TrackingFrame>(EMPTY);
   const diagnostics = useRef<TrackingDiagnostics>({
-    build: "holistic-play-8",
+    build: "isolated-tracking-9",
     stage: "Camera off",
     engine: "—",
     video: "—",
@@ -66,6 +66,8 @@ export function useTracking(
     model = useRef<VisionEngine | null>(null),
     timer = useRef<ReturnType<typeof setTimeout> | null>(null),
     generation = useRef(0);
+  const startup = useRef<AbortController | null>(null);
+  const requestedExercise = useRef(exercise);
   const current = useRef({ arm, exercise });
   current.current = { arm, exercise };
   const modelExercise = useRef<Exercise | null>(null),
@@ -97,6 +99,8 @@ export function useTracking(
   }, [arm, exercise]);
   const stop = useCallback(() => {
     generation.current++;
+    startup.current?.abort();
+    startup.current = null;
     if (timer.current) clearTimeout(timer.current);
     stream.current?.getTracks().forEach((t) => t.stop());
     stream.current = null;
@@ -120,10 +124,13 @@ export function useTracking(
   const start = useCallback(async () => {
     stop();
     const id = generation.current;
+    requestedExercise.current = current.current.exercise;
+    const startupController = new AbortController();
+    startup.current = startupController;
     setStatus("loading");
     setError("");
     diagnostics.current = {
-      build: "holistic-play-8",
+      build: "isolated-tracking-9",
       stage: "Waiting for camera permission",
       engine: "—",
       video: "—",
@@ -167,7 +174,10 @@ export function useTracking(
       diagnostics.current.stage = "Loading movement tracker";
       diagnostics.current.video = `${el.videoWidth} × ${el.videoHeight}`;
       setFrame({ ...EMPTY, message: "Waking up the movement tracker…" });
-      pendingModel = await createVisionEngine(activeExercise);
+      pendingModel = await createVisionEngine(
+        activeExercise,
+        startupController.signal,
+      );
       if (id !== generation.current) {
         pending.getTracks().forEach((t) => t.stop());
         pendingModel.close();
@@ -323,17 +333,26 @@ export function useTracking(
           : e instanceof DOMException && e.name === "NotFoundError"
             ? "No camera was found. Connect one, or play with buttons."
             : e instanceof Error
-              ? e.message
+              ? /Module\.arguments|Aborted\(|WebAssembly|memory access out of bounds/.test(
+                  e.message,
+                )
+                ? "The movement tracker couldn’t start. Try the camera again."
+                : e.message
               : "The movement tracker could not load. Please reconnect.",
       );
     }
   }, [stop, requestStream]);
   useEffect(() => {
-    if (model.current && modelExercise.current !== exercise) void start();
-  }, [exercise, start]);
+    if (
+      (status === "on" || status === "loading") &&
+      requestedExercise.current !== exercise
+    )
+      void start();
+  }, [exercise, status, start]);
   useEffect(
     () => () => {
       generation.current++;
+      startup.current?.abort();
       if (timer.current) clearTimeout(timer.current);
       stream.current?.getTracks().forEach((t) => t.stop());
       model.current?.close();
