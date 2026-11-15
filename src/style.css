@@ -6312,3 +6312,500 @@ input[type="range"] {
     height: 50px;
   }
 }
+
+/* ---------- Home plan, plan setup and progress report ---------- */
+.today-plan {
+  margin-top: 22px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: #fffdf4e6;
+  border: 1px solid #e6dfc2;
+  box-shadow: 0 6px 20px #2a594914;
+  max-width: 360px;
+}
+.today-title {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #4f6a55;
+}
+.today-plan ol {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.today-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 10px 6px 6px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background: #f1f3e8;
+  color: #24483e;
+  text-align: left;
+}
+.today-item.selected {
+  border-color: #9fbf8f;
+  background: #e8f1df;
+}
+.today-item .panel-game-glyph {
+  width: 34px;
+  height: 34px;
+}
+.today-name {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 700;
+}
+.today-count {
+  min-width: 40px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+  color: #4f6a55;
+}
+.today-item.done .today-count {
+  background: #0ca30c;
+  color: #fff;
+  display: grid;
+  place-items: center;
+}
+.next-plan-button {
+  margin-top: 6px;
+}
+.plan-all-done {
+  margin: 8px 0;
+  padding: 10px;
+  border-radius: 12px;
+  background: #eef7e3;
+  color: #2f5a35;
+  font-weight: 800;
+  text-align: center;
+}
+
+.progress-report,
+.care-plan-modal {
+  width: 760px;
+  color: #24483e;
+}
+.care-plan-modal {
+  width: 620px;
+}
+.report-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+.report-head h2 {
+  margin: 4px 0 4px;
+  font-size: 28px;
+}
+.report-head p {
+  margin: 0;
+  color: #61765e;
+  font-size: 13px;
+}
+.example-badge {
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #fff1cf;
+  color: #7a5a14;
+  font-size: 11px;
+  font-weight: 700;
+}
+.report-callout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #fff4d6;
+}
+.report-callout p {
+  margin: 0;
+}
+.report-section {
+  margin: 22px 0 10px;
+  font-size: 14px;
+  letter-spacing: 0.2px;
+}
+.stat-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 18px;
+}
+.stat-tile {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #fffef8;
+  border: 1px solid #ebe7d6;
+}
+.stat-tile span {
+  display: block;
+  font-size: 12px;
+  color: #6b7b67;
+}
+.stat-tile strong {
+  font-size: 26px;
+  font-weight: 700;
+}
+.stat-tile small {
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7b67;
+}
+.day-strip {
+  display: grid;
+  grid-template-columns: repeat(14, minmax(0, 1fr));
+  gap: 4px;
+}
+.day-cell {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 6px 0;
+  border-radius: 10px;
+  background: #fffef8;
+  border: 1px solid #ebe7d6;
+  font-size: 10px;
+  color: #6b7b67;
+}
+.day-cell i {
+  font-style: normal;
+  font-weight: 700;
+  color: #24483e;
+}
+.day-mark {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 900;
+  color: #fff;
+  background: transparent;
+  border: 1.5px dashed #c9cdbd;
+}
+.day-complete .day-mark,
+.day-mark.day-complete {
+  background: #0ca30c;
+  border: 2px solid #fffef8;
+}
+.day-partial .day-mark,
+.day-mark.day-partial {
+  background: #fab219;
+  color: #3b2a05;
+  border: 2px solid #fffef8;
+}
+.day-before {
+  opacity: 0.4;
+}
+.day-before .day-mark {
+  border-color: transparent;
+}
+.day-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: #52514e;
+}
+.day-legend span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.day-legend .day-mark {
+  width: 18px;
+  height: 18px;
+  font-size: 11px;
+}
+.exercise-reports {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.exercise-report {
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: #fffef8;
+  border: 1px solid #ebe7d6;
+}
+.exercise-report header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.exercise-report header div {
+  flex: 1;
+  display: grid;
+}
+.exercise-report header small {
+  color: #6b7b67;
+  font-size: 11px;
+}
+.exercise-report .panel-game-glyph {
+  width: 36px;
+  height: 36px;
+}
+.today-chip {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #f1f3e8;
+  font-size: 11px;
+  font-weight: 800;
+}
+.today-chip.done {
+  background: #e3f3dc;
+  color: #1f5c25;
+}
+.exercise-summary {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #52514e;
+}
+.exercise-summary strong {
+  color: #0b0b0b;
+}
+.rom-chart {
+  position: relative;
+  margin-top: 6px;
+}
+.rom-chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.rom-chart rect:focus {
+  outline: none;
+}
+.chart-grid {
+  stroke: #e9e6da;
+  stroke-width: 1;
+}
+.chart-tick {
+  fill: #6b7b67;
+  font-size: 11px;
+}
+.chart-line {
+  fill: none;
+  stroke: #13875f;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.chart-area {
+  fill: #13875f;
+  opacity: 0.1;
+}
+.chart-dot {
+  fill: #13875f;
+  stroke: #fffef8;
+  stroke-width: 2;
+}
+.chart-crosshair {
+  stroke: #b9bcae;
+  stroke-width: 1;
+}
+.chart-end {
+  fill: #0b0b0b;
+  font-size: 12px;
+  font-weight: 700;
+}
+.chart-tooltip {
+  position: absolute;
+  transform: translate(-50%, calc(-100% - 12px));
+  display: grid;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: #24483e;
+  color: #fffdf0;
+  font-size: 11px;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 6px 16px #0e312533;
+}
+.chart-tooltip strong {
+  font-size: 13px;
+}
+.report-empty {
+  margin: 14px 0;
+  color: #6b7b67;
+  font-size: 13px;
+}
+.report-table {
+  margin-top: 16px;
+  font-size: 12px;
+}
+.report-table summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+.report-table table {
+  width: 100%;
+  margin-top: 8px;
+  border-collapse: collapse;
+}
+.report-table th,
+.report-table td {
+  padding: 5px 6px;
+  border-bottom: 1px solid #ebe7d6;
+  text-align: left;
+}
+.report-note {
+  margin: 16px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #6b7b67;
+}
+.report-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+}
+.report-actions .button {
+  gap: 8px;
+}
+.danger-text {
+  color: #a8442f !important;
+}
+.plan-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+.plan-choice {
+  position: relative;
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1.5px solid #e3e1cf;
+  background: #fffef8;
+  text-align: left;
+  color: #24483e;
+}
+.plan-choice.selected {
+  border-color: #5b8b6a;
+  background: #eef5e6;
+}
+.plan-choice small {
+  color: #6b7b67;
+}
+.plan-glyphs {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+.plan-glyphs .panel-game-glyph {
+  width: 30px;
+  height: 30px;
+}
+.plan-check {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  color: #2f6a4f;
+}
+.plan-items {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.plan-items li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: #fffef8;
+  border: 1px solid #ebe7d6;
+}
+.plan-items li > div:not(.reps-stepper) {
+  flex: 1;
+  display: grid;
+}
+.plan-items small {
+  color: #6b7b67;
+}
+.reps-stepper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.reps-stepper button {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #eef1e4;
+}
+.reps-stepper strong {
+  font-size: 16px;
+}
+@media (max-width: 700px) {
+  .stat-tiles,
+  .exercise-reports,
+  .plan-choices {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .exercise-reports {
+    grid-template-columns: 1fr;
+  }
+  .day-strip {
+    gap: 2px;
+  }
+}
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .progress-report,
+  .progress-report * {
+    visibility: visible;
+  }
+  .progress-report {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    max-height: none;
+    overflow: visible;
+    box-shadow: none;
+    border: none;
+  }
+  .report-backdrop {
+    background: none !important;
+    backdrop-filter: none !important;
+  }
+  .no-print,
+  .report-actions {
+    display: none !important;
+  }
+  .report-table[open] table,
+  .report-table table {
+    display: table;
+  }
+}

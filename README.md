@@ -52,6 +52,21 @@ The practice range uses the fifth-smallest and fifth-largest observations, requi
 
 The profile is applied to filtering and game input mapping. It remains in memory only and is excluded from stored preferences. Camera restart and a new adventure request a fresh attempt. Grown-up help can explicitly start with current settings while tracking is valid. After one successful movement the adventure starts automatically; no separate confirmation is required.
 
+## Home exercise plans and progress for therapists
+
+**Plan & progress** (header) lets a parent or therapist pick an example home plan; each has two games and a daily number of repetitions, adjustable per game:
+
+| Plan | Games |
+| --- | --- |
+| Wrist injury | Butterfly Breeze (wrist bend) + Sleepy Flowers (grip) |
+| Hand & fingers | Sleepy Flowers + Butterfly Breeze |
+| Elbow stiffness | Dragon Flight + Pirate Ship |
+| Forearm / after a cast | Pirate Ship + Butterfly Breeze |
+
+The start screen then shows today's plan with reps done so far, selects the next unfinished game, and after each game offers **Next in today's plan**. While a plan is active, every session is saved in this browser as numbers only: date, game, mode, reps, active time and a robust movement range (5th–95th percentile of the camera-measured value, so single spikes cannot define it). No video, images or landmarks are stored.
+
+The **progress report** shows, for the last 14 days: days fully done, days with practice, the current streak and active time; a day-by-day consistency strip (icon + label, not colour alone); and per game a range-of-motion line over camera sessions (largest wrist bend, hand-opening span, elbow bend arc or forearm turn arc) with the change since the first session, hover details and a table view. Button play counts toward daily goals but never toward movement range. It can be printed or saved as PDF, or downloaded as CSV. **Load 2 example weeks** adds clearly labelled example data for demonstrations. Plans are examples to be agreed with the child's therapist; the report is a home-practice record, not a clinical assessment.
+
 ## Tracking and movement calculation
 
 Sleepy Flowers uses **MediaPipe Hand Landmarker** directly, with detection, presence and tracking confidence 0.3 and up to two candidate hands. The playing hand follows spatial continuity instead of a brittle handedness label; label flicker and changing result order cannot swap hands. Missing observations clear the current signal and require reacquisition.

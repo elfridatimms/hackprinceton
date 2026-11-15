@@ -25,6 +25,7 @@ import {
   Wind,
   X,
   Flag,
+  ClipboardList,
 } from "lucide-react";
 import { Forest } from "./game/Forest";
 import {
@@ -41,6 +42,23 @@ import {
 import { InputPanel } from "./components/CameraPanel";
 import { Settings, SessionDetails, formatTime } from "./components/Settings";
 import { Setup } from "./components/Setup";
+import { GameGlyph } from "./components/GameTabs";
+import { CarePlanSetup } from "./components/CarePlanSetup";
+import { ProgressReport } from "./components/ProgressReport";
+import {
+  CARE_PLANS,
+  dayKey,
+  exampleHistory,
+  loadHistory,
+  loadPlan,
+  nextExercise,
+  saveHistory,
+  savePlan,
+  todayProgress,
+  toRecord,
+  type CarePlan,
+  type SessionRecord,
+} from "./care/plan";
 const CHEERS = [
   "Yay!",
   "Sparkly!",
@@ -68,6 +86,52 @@ function Cheer({ count, streak }: { count: number; streak: number }) {
     </div>
   );
 }
+/** Today's prescribed games on the start screen, with reps done so far. */
+function TodayPlan({
+  plan,
+  history,
+  selected,
+  onSelect,
+}: {
+  plan: CarePlan;
+  history: SessionRecord[];
+  selected: Exercise;
+  onSelect: (e: Exercise) => void;
+}) {
+  const today = todayProgress(plan, history);
+  const allDone = today.every((i) => i.complete);
+  return (
+    <div className="today-plan" aria-label="Today's plan">
+      <span className="today-title">
+        {allDone ? "⭐ All done today!" : "Today’s plan"} ·{" "}
+        {CARE_PLANS[plan.id].label}
+      </span>
+      <ol>
+        {today.map((item) => (
+          <li key={item.exercise}>
+            <button
+              className={`today-item ${item.exercise === selected ? "selected" : ""} ${item.complete ? "done" : ""}`}
+              onClick={() => onSelect(item.exercise)}
+              aria-label={`${exercises[item.exercise].tab}: ${Math.min(item.done, item.reps)} of ${item.reps} reps today`}
+            >
+              <span className="panel-game-glyph">
+                <GameGlyph exercise={item.exercise} />
+              </span>
+              <span className="today-name">{exercises[item.exercise].tab}</span>
+              <span className="today-count">
+                {item.complete ? (
+                  <Check size={15} />
+                ) : (
+                  `${Math.min(item.done, item.reps)}/${item.reps}`
+                )}
+              </span>
+            </button>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
 export default function App() {
   const [settings, setSettings] = useState<Config>(loadSettings),
     [showSettings, setShowSettings] = useState(false),
@@ -80,6 +144,10 @@ export default function App() {
     [endingReady, setEndingReady] = useState(false);
   const [switchTarget, setSwitchTarget] = useState<Exercise | null>(null);
   const [showLesson, setShowLesson] = useState(false);
+  const [plan, setPlan] = useState<CarePlan | null>(loadPlan),
+    [history, setHistory] = useState<SessionRecord[]>(loadHistory),
+    [showPlan, setShowPlan] = useState(false),
+    [showReport, setShowReport] = useState(false);
   const tracking = useTracking(
       settings.arm,
       undefined,
@@ -87,6 +155,28 @@ export default function App() {
       settings.personalization,
     ),
     session = useSession(settings, tracking.frame, tracking.status === "on");
+  const savedSummary = useRef<number | null>(null);
+  useEffect(() => {
+    // Keep a numbers-only record of each session while a plan is active.
+    const summary = session.summary;
+    if (!summary || savedSummary.current === summary.id) return;
+    savedSummary.current = summary.id;
+    if (!plan && !settings.saveSummaries) return;
+    if (summary.cycles === 0 && summary.seconds < 5) return;
+    const record = toRecord(summary);
+    if (!record) return;
+    setHistory((h) => {
+      const next = [...h, record];
+      saveHistory(next);
+      return next;
+    });
+  }, [session.summary, plan, settings.saveSummaries]);
+  useEffect(() => {
+    // Daily reps from the plan become the game's goal.
+    const item = plan?.items.find((i) => i.exercise === settings.exercise);
+    if (item && settings.target !== item.reps)
+      setSettings((s) => ({ ...s, target: item.reps }));
+  }, [plan, settings.exercise, settings.target]);
   const previousArm = useRef(settings.arm);
   const modalRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -138,6 +228,8 @@ export default function App() {
     showLesson ||
     showSettings ||
     showDetails ||
+    showPlan ||
+    showReport ||
     session.phase === "setup" ||
     session.phase === "calibration" ||
     session.phase === "paused" ||
@@ -182,7 +274,7 @@ export default function App() {
       document.removeEventListener("keydown", trap);
       previous?.focus();
     };
-  }, [anyModal, showSettings, showDetails, switchTarget, showLesson]);
+  }, [anyModal, showSettings, showDetails, switchTarget, showLesson, showPlan, showReport]);
   const startDemo = () => {
     setSettings((s) => ({ ...s, personalization: null }));
     tracking.stop();
@@ -205,7 +297,12 @@ export default function App() {
     setCameraOff(false);
   };
   const enterGame = (next: Exercise) => {
-    if (session.seconds > 0 || session.cycles > 0) session.finish(false);
+    // A finished adventure already has its summary; only close unfinished ones.
+    if (
+      session.phase !== "completed" &&
+      (session.seconds > 0 || session.cycles > 0)
+    )
+      session.finish(false);
     tracking.stop();
     session.reset("welcome");
     setSettings((current) => ({
@@ -301,6 +398,18 @@ export default function App() {
             <span>Sound {settings.muted ? "off" : "on"}</span>
           </button>
           <span className="header-divider" />
+          <button
+            className="settings-button"
+            onClick={() => {
+              if (session.phase === "playing" || session.phase === "practice")
+                session.transition("paused");
+              setShowReport(true);
+            }}
+          >
+            <ClipboardList size={16} />
+            <span>Plan & progress</span>
+          </button>
+          <span className="header-divider" />
           <button className="settings-button" onClick={openSettings}>
             <SlidersHorizontal size={16} />
             <span>Grown-up settings</span>
@@ -344,6 +453,14 @@ export default function App() {
                 <button className="hero-demo" onClick={startDemo}>
                   Play without a camera
                 </button>
+                {plan && (
+                  <TodayPlan
+                    plan={plan}
+                    history={history}
+                    selected={settings.exercise}
+                    onSelect={selectGame}
+                  />
+                )}
               </div>
             </div>
           </>
@@ -918,6 +1035,27 @@ export default function App() {
                 ? "Demo session · keyboard & slider"
                 : "Camera session · projected movement"}
             </div>
+            {plan &&
+              (() => {
+                const next = nextExercise(plan, history);
+                return next && next !== settings.exercise ? (
+                  <button
+                    className="button primary full next-plan-button"
+                    onClick={() => {
+                      const camera = session.mode === "camera";
+                      enterGame(next);
+                      camera ? startCamera() : startDemo();
+                    }}
+                  >
+                    Next in today’s plan: {exercises[next].tab}{" "}
+                    <ArrowRight size={17} />
+                  </button>
+                ) : !next ? (
+                  <div className="plan-all-done">
+                    ⭐ Today’s plan is all done!
+                  </div>
+                ) : null;
+              })()}
             <button
               className="button primary full"
               onClick={() => {
@@ -996,6 +1134,58 @@ export default function App() {
           onDetails={() => {
             setShowSettings(false);
             setShowDetails(true);
+          }}
+        />
+      )}
+      {showReport && (
+        <ProgressReport
+          plan={plan}
+          history={history}
+          onClose={() => setShowReport(false)}
+          onEditPlan={() => {
+            setShowReport(false);
+            setShowPlan(true);
+          }}
+          onLoadExample={() => {
+            if (!plan) return;
+            const example = exampleHistory(plan);
+            const next = [...example, ...history];
+            setHistory(next);
+            saveHistory(next);
+            // Example weeks only make sense if the plan covers them.
+            const earliest = example
+              .map((r) => dayKey(new Date(r.at)))
+              .sort()[0];
+            if (earliest && earliest < plan.startedOn) {
+              const moved = { ...plan, startedOn: earliest };
+              setPlan(moved);
+              savePlan(moved);
+            }
+          }}
+          onClearExample={() => {
+            const next = history.filter((r) => !r.example);
+            setHistory(next);
+            saveHistory(next);
+          }}
+          onClearAll={() => {
+            setHistory([]);
+            saveHistory([]);
+          }}
+        />
+      )}
+      {showPlan && (
+        <CarePlanSetup
+          plan={plan}
+          onClose={() => setShowPlan(false)}
+          onSave={(next) => {
+            setPlan(next);
+            savePlan(next);
+            setShowPlan(false);
+            if (next) {
+              const first = nextExercise(next, history) ?? next.items[0].exercise;
+              if (session.phase === "welcome") enterGame(first);
+              setShowReport(true);
+            }
           }}
         />
       )}

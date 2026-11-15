@@ -1,6 +1,10 @@
 import { steadyFireflyPosition, fireflyTravel } from "./fireflyControl";
 import type { PersonalProfile } from "../movement/personalization";
-import { normalizeReach, type Exercise } from "../movement/exercises";
+import {
+  movementValue,
+  normalizeReach,
+  type Exercise,
+} from "../movement/exercises";
 import { FRAME_MAX_AGE_MS } from "../movement/calibration";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -57,7 +61,18 @@ export type Summary = {
   trace: { t: number; v: number }[];
   finished: boolean;
   target: number;
+  /** Robust low/high (5th/95th percentile) of the camera-measured movement, in
+   * the exercise's own units (degrees, or hand-opening ratio). Camera only. */
+  rangeLow?: number | null;
+  rangeHigh?: number | null;
 };
+/** 5th and 95th percentile; isolated spikes cannot define the range. */
+export function robustRange(values: number[]) {
+  if (values.length < 10) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const at = (q: number) => sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))];
+  return { low: at(0.05), high: at(0.95) };
+}
 export const defaultSettings: Settings = {
   exercise: "grip",
   personalization: null,
@@ -164,6 +179,8 @@ export function useSession(
     counter = useRef(new CycleCounter()),
     gate = useRef(new TrackingGate()),
     trace = useRef<Summary["trace"]>([]),
+    measured = useRef<number[]>([]),
+    lastMeasured = useRef(0),
     active = useRef(0),
     collected = useRef(0),
     lastTrace = useRef(0),
@@ -201,6 +218,8 @@ export function useSession(
     active.current = 0;
     collected.current = 0;
     trace.current = [];
+    measured.current = [];
+    lastMeasured.current = 0;
     lastTrace.current = 0;
     control.current = 0.5;
     world.current.position = 0.5;
@@ -224,6 +243,7 @@ export function useSession(
   }, []);
   const finish = useCallback((finished = true) => {
     const c = current.current;
+    const range = c.mode === "camera" ? robustRange(measured.current) : null;
     const result: Summary = {
       id: Date.now(),
       cycles: counter.current.count,
@@ -234,6 +254,8 @@ export function useSession(
       finished,
       target: c.settings.target,
       exercise: c.settings.exercise,
+      rangeLow: range ? +range.low.toFixed(3) : null,
+      rangeHigh: range ? +range.high.toFixed(3) : null,
     };
     setSummary(result);
     current.current.phase = "completed";
@@ -404,6 +426,16 @@ export function useSession(
         setWaiting(waitingNow);
         if (c.phase === "playing" && valid) {
           active.current += dt;
+          // Real movement range in the exercise's units, sampled at 10 Hz.
+          if (c.mode === "camera" && now - lastMeasured.current > 100) {
+            const raw = movementValue(c.frame, c.settings.exercise);
+            if (raw !== null && Number.isFinite(raw)) {
+              measured.current.push(raw);
+              lastMeasured.current = now;
+              if (measured.current.length > 6000)
+                measured.current = measured.current.filter((_, i) => i % 2 === 0);
+            }
+          }
           if (counter.current.update(world.current.position, now, true)) {
             setCycles(counter.current.count);
             world.current.cycles = counter.current.count;
