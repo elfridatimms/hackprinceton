@@ -163,21 +163,20 @@ describe("The short camera start without comfy-spot screens", () => {
       render();
     }
   }
-  it("shows the animation first, then requests the camera only on the play button", () => {
+  it("shows the animation first, then starts the camera by itself without another click", () => {
     expect(
       host.querySelector('[aria-label="Movement demonstration"]'),
     ).not.toBeNull();
     expect(tracking.start).not.toHaveBeenCalled();
     watch();
-    click("Let’s play!");
     expect(tracking.start).toHaveBeenCalledOnce();
+    expect(button("Let’s play!")).toBeUndefined();
     expect(host.querySelector("canvas")).not.toBeNull();
     expect(host.textContent).not.toMatch(/find my|comfy spot|save.*position/i);
     expect(host.querySelector(".hold-progress")).toBeNull();
   });
   it("learns one natural movement and starts the game automatically", () => {
     watch();
-    click("Let’s play!");
     frames(1.05);
     frames(2.1);
     frames(1.05);
@@ -197,7 +196,6 @@ describe("The short camera start without comfy-spot screens", () => {
     settings = { ...settings, exercise: "reach" };
     render();
     watch();
-    click("Let’s play!");
     frames(-0.5);
     frames(-0.5, false, 1);
     frames(0.5);
@@ -215,7 +213,6 @@ describe("The short camera start without comfy-spot screens", () => {
   });
   it("does not turn standing still or missing tracking into a completed movement", () => {
     watch();
-    click("Let’s play!");
     frames(1.5, true, 40);
     frames(1.5, false, 10);
     expect(save).not.toHaveBeenCalled();
@@ -234,8 +231,7 @@ describe("The short camera start without comfy-spot screens", () => {
       settings = { ...settings, exercise };
       render();
       watch();
-      click("Let’s play!");
-      frames(low);
+        frames(low);
       frames(high);
       frames(low);
       act(() => vi.advanceTimersByTime(1000));
@@ -255,7 +251,6 @@ describe("The short camera start without comfy-spot screens", () => {
   );
   it("offers current settings through grown-up help without pretending a scan completed", () => {
     watch();
-    click("Let’s play!");
     frames(1.5, true, 1);
     click("Start with current settings");
     expect(reset).toHaveBeenCalledWith("playing");

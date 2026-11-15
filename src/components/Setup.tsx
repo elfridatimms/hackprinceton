@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Camera, ChevronDown, Check, X } from "lucide-react";
+import { ChevronDown, Check, X } from "lucide-react";
 import { MotionPreview } from "./MotionPreview";
 import { PersonalTune } from "./PersonalTune";
 import { CameraDiagnostics } from "./CameraDiagnostics";
@@ -31,8 +31,7 @@ export function Setup({
   onClose: () => void;
   onDemo: () => void;
 }) {
-  const [watched, setWatched] = useState(false),
-    [trying, setTrying] = useState(false),
+  const [trying, setTrying] = useState(false),
     [attempt, setAttempt] = useState(0);
   const instruction = childInstructions[settings.exercise];
   const finish = (profile: PersonalProfile | null) => {
@@ -48,7 +47,6 @@ export function Setup({
   const choose = (exercise: Exercise) => {
     tracking.stop();
     setTrying(false);
-    setWatched(false);
     setSettings({ ...settings, exercise, personalization: null });
   };
   return (
@@ -80,46 +78,22 @@ export function Setup({
             range={getMovementRange(settings)}
             onComplete={finish}
             onReplay={() => {
+              tracking.stop();
               setTrying(false);
-              setWatched(false);
             }}
             onDemo={onDemo}
           />
         ) : (
           <>
-            {!watched ? (
-              <MotionPreview
-                exercise={settings.exercise}
-                title={instruction.goal}
-                onDone={() => setWatched(true)}
-              />
-            ) : (
-              <>
-                <h2 id="setup-title">Your turn!</h2>
-                <p>{instruction.camera}</p>
-                {settings.exercise === "reach" && (
-                  <p className="playing-arm-note">
-                    Following your <strong>{settings.arm} arm</strong>.
-                  </p>
-                )}
-                <p className="child-reassurance">{instruction.tip}</p>
-                <button
-                  className="button primary full"
-                  onClick={() => {
-                    setTrying(true);
-                    void tracking.start();
-                  }}
-                >
-                  <Camera size={18} /> Let’s play!
-                </button>
-                <button
-                  className="text-button centered"
-                  onClick={() => setWatched(false)}
-                >
-                  Watch again
-                </button>
-              </>
-            )}
+            <MotionPreview
+              exercise={settings.exercise}
+              title={instruction.goal}
+              onDone={() => {
+                // Straight from the demonstration into the camera: no extra click.
+                setTrying(true);
+                void tracking.start();
+              }}
+            />
             <details className="grownup-fold">
               <summary>
                 Grown-up: movement options <ChevronDown size={13} />
