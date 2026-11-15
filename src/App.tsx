@@ -88,7 +88,7 @@ function Cheer({ count, streak }: { count: number; streak: number }) {
     </div>
   );
 }
-/** Rehabbit's mark: an original little bunny with one ear bent mid-stretch. */
+/** Rehabbit (rehab + habit) mark: an original little bunny with one ear bent mid-stretch. */
 function BunnyMark() {
   return (
     <svg viewBox="0 0 48 52" aria-hidden="true">
@@ -435,7 +435,7 @@ export default function App() {
             <strong>
               rehabbit<span className="brand-spark">✧</span>
             </strong>
-            <small>PHYSIO GAMES THAT HOP ALONG WITH YOU</small>
+            <small>REHAB THAT BECOMES A HABIT</small>
           </span>
         </button>
         <div className="header-actions">

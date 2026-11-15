@@ -1,6 +1,6 @@
 # Rehabbit
 
-*Physio games that hop along with you.* Kids do their home exercises by playing; the camera measures the movement on the device, and therapists get a progress report.
+*Rehab that becomes a habit.* The name is rehab + habit: recovery happens when small home exercises become a daily habit. Kids do them by playing camera games (the bunny keeps them hopping); the camera measures the movement on the device, and therapists see consistency and progress.
 
 Luma the little dragon is the guide inside the games.
 

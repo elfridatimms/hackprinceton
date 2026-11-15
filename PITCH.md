@@ -1,6 +1,8 @@
 # Rehabbit · hackathon pitch
 
-**One line:** *Rehabbit turns a child's boring home physio exercises into camera games, and turns every game into a progress report the therapist can actually use.*
+**One line:** *Rehabbit = rehab + habit. It turns a child's boring home physio exercises into camera games they want to play every day, and turns every game into a progress report the therapist can actually use.*
+
+**The name, in one sentence (say it early):** "Rehabbit: rehab plus habit. Recovery happens when exercises become a daily habit, and our bunny keeps kids hopping."
 
 Total time: about 3 minutes + questions. Two people: **Speaker** (story, numbers) and **Driver** (laptop, never talks while the demo runs).
 
@@ -26,7 +28,7 @@ Total time: about 3 minutes + questions. Two people: **Speaker** (story, numbers
 4. **Sleepy Flowers (30 s).** *Next in today's plan* → close the hand to gather seeds, open it to sow them; the meadow grows.
    > "Same tracker, different joint. The flowers open and close with the hand."
 5. **Therapist report (40 s).** *Plan & progress*. Have **Load 2 example weeks** done beforehand (it is labelled *Includes example data*; say so).
-   > "Here is what the therapist gets: which days the child actually practised, the streak, and the range of motion over time: this wrist went from about 24° to 40° of bend. One click to PDF or CSV."
+   > "This is the *habit* part. Here is what the therapist gets: which days the child actually practised, the streak, and the range of motion over time: this wrist went from about 24° to 40° of bend. One click to PDF or CSV."
 
 ## 2:15 – 2:45 · How it works (Speaker)
 
@@ -38,7 +40,7 @@ Total time: about 3 minutes + questions. Two people: **Speaker** (story, numbers
 
 ## 2:45 – 3:00 · Close (Speaker)
 
-> "Kids get a game they want to play. Therapists get the numbers they never had. Rehabbit: physio games that hop along with you."
+> "Kids get a game they want to play every day. Therapists get the numbers they never had. Rehabbit: rehab that becomes a habit."
 
 What's next (only if asked or if time allows): therapist sends the plan as a link/QR, compensation detection (e.g. lifting the shoulder instead of bending the elbow), more joints.
 
