@@ -1,3 +1,4 @@
+import { fireflyHeight } from "./fireflyControl";
 import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
@@ -106,22 +107,34 @@ export function Dragon({
       t = clock.elapsedTime;
     root.current!.visible = w.exercise === "elbow" || w.exercise === "reach";
     const rest = w.phase === "paused" || w.waiting;
-    const targetY = welcome ? 1.65 : -0.3 + w.position * 4.2;
+    const reach = w.exercise === "reach";
+    const targetY = welcome
+      ? 1.65
+      : reach
+        ? fireflyHeight(w.position, w.reachTravel)
+        : -0.3 + w.position * 4.2;
     const r = root.current!;
-    r.position.y =
-      THREE.MathUtils.damp(r.position.y, targetY, 12, dt) +
-      (w.reduced ? 0 : Math.sin(t * 2) * 0.0015);
+    if (!reach || welcome || !rest)
+      r.position.y =
+        reach && !welcome
+          ? targetY
+          : THREE.MathUtils.damp(r.position.y, targetY, 12, dt) +
+            (w.reduced ? 0 : Math.sin(t * 2) * 0.0015);
     r.rotation.z = THREE.MathUtils.damp(
       r.rotation.z,
-      rest ? -0.04 : Math.max(-0.14, Math.min(0.16, w.velocity * 0.13)),
+      reach
+        ? 0
+        : rest
+          ? -0.04
+          : Math.max(-0.14, Math.min(0.16, w.velocity * 0.13)),
       5,
       dt,
     );
-    r.rotation.y = 0.12 + Math.sin(t * 0.7) * 0.045;
+    r.rotation.y = 0.12 + (reach ? 0 : Math.sin(t * 0.7) * 0.045);
     let flap = w.reduced
       ? 0
       : Math.sin(t * (rest ? 2.6 : w.velocity > 0.1 ? 9 : 5)) *
-        (rest ? 0.12 : 0.28);
+        (reach ? 0.1 : rest ? 0.12 : 0.28);
     left.current!.rotation.y = flap;
     right.current!.rotation.y = -flap;
     const delight = performance.now() / 1000 - w.collectAt < 0.8;
@@ -138,7 +151,7 @@ export function Dragon({
       3 +
       Math.sin(t * 2) * 0.4 +
       (performance.now() / 1000 - w.collectAt < 0.7 ? 6 : 0);
-    if (w.phase === "completed" && w.celebrating) {
+    if (w.phase === "completed" && w.celebrating && !reach) {
       if (celebration.current === null) celebration.current = t;
       const elapsed = t - celebration.current;
       if (elapsed < 2.4) {

@@ -1,3 +1,4 @@
+import { steadyFireflyPosition, fireflyTravel } from "./fireflyControl";
 import type { PersonalProfile } from "../movement/personalization";
 import { normalizeReach, type Exercise } from "../movement/exercises";
 import { FRAME_MAX_AGE_MS } from "../movement/calibration";
@@ -62,8 +63,8 @@ export const defaultSettings: Settings = {
   tiltUpper: 40,
   shipLower: -25,
   shipUpper: 25,
-  reachLower: 0.2,
-  reachUpper: 0.8,
+  reachLower: -0.5,
+  reachUpper: 0.5,
   arm: "right",
   lower: 150,
   upper: 65,
@@ -81,7 +82,7 @@ export function loadSettings(): Settings {
       ...defaultSettings,
       reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches,
       ...stored,
-      ...(stored.inputVersion === 2
+      ...(stored.inputVersion >= 2
         ? {}
         : {
             reachLower: 0.2,
@@ -92,6 +93,9 @@ export function loadSettings(): Settings {
             shipUpper: 25,
             smoothing: 0.12,
           }),
+      ...(stored.inputVersion >= 3
+        ? {}
+        : { reachLower: -0.5, reachUpper: 0.5 }),
       personalization: null,
     };
   } catch {
@@ -100,6 +104,7 @@ export function loadSettings(): Settings {
 }
 export type WorldState = {
   bumpAt?: number;
+  reachTravel?: number;
   exercise?: Exercise;
   celebrating: boolean;
   position: number;
@@ -151,6 +156,9 @@ export function useSession(
   world.current.reduced = settings.reducedMotion;
   world.current.speed = settings.speed;
   world.current.exercise = settings.exercise;
+  world.current.reachTravel = fireflyTravel(
+    settings.reachUpper - settings.reachLower,
+  );
   const pausedFrom = useRef<"practice" | "playing">("playing");
   const transition = useCallback((next: Phase) => {
     if (!canTransition(current.current.phase, next)) return;
@@ -352,12 +360,10 @@ export function useSession(
       }
       const old = world.current.position;
       if (live && valid)
-        world.current.position = smooth(
-          old,
-          control.current,
-          dt,
-          c.settings.smoothing,
-        );
+        world.current.position =
+          c.settings.exercise === "reach"
+            ? steadyFireflyPosition(old, control.current, dt)
+            : smooth(old, control.current, dt, c.settings.smoothing);
       world.current.velocity = smooth(
         world.current.velocity,
         (world.current.position - old) / Math.max(dt, 0.001),

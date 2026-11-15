@@ -76,7 +76,7 @@ describe("Open / close: wake a sleepy flower", () => {
   });
 });
 describe("Optional reach movement stays independent", () => {
-  it("uses both shoulders and the selected wrist, without needing a visible elbow", () => {
+  it("uses only the selected elbow and wrist, even without the other shoulder", () => {
     const p = Array.from({ length: 33 }, () => ({
       x: 0.5,
       y: 0.5,
@@ -84,8 +84,10 @@ describe("Optional reach movement stays independent", () => {
     }));
     p[11] = { x: 0.35, y: 0.4, visibility: 0.9 };
     p[12] = { x: 0.65, y: 0.4, visibility: 0.9 };
-    p[16] = { x: 0.75, y: 0.2, visibility: 0.9 };
-    expect(handHeight(p, "right", 4 / 3)).toBeCloseTo(0.5);
+    p[14] = { x: 0.6, y: 0.6, visibility: 0.9 };
+    p[16] = { x: 0.75, y: 0.4, visibility: 0.9 };
+    p[11].visibility = 0;
+    expect(handHeight(p, "right", 4 / 3)).toBeCloseTo(Math.SQRT1_2);
     expect(reachRange(-0.9, 0.1)).toEqual({ lower: -0.9, upper: 0.1 });
   });
 });

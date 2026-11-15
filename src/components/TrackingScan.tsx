@@ -77,8 +77,14 @@ export function TrackingScan({
     tracking.status === "on" &&
     clockNow >= tracking.frame.at &&
     clockNow - tracking.frame.at < FRAME_MAX_AGE_MS;
+  const markedPoints =
+    exercise === "reach"
+      ? ((tracking.frame.arm ?? arm) === "left" ? [11, 13, 15] : [12, 14, 16])
+          .map((i) => tracking.frame.points[i])
+          .filter(Boolean)
+      : tracking.frame.points;
   const visible = pointFresh
-    ? tracking.frame.points.filter((p) =>
+    ? markedPoints.filter((p) =>
         hand
           ? (tracking.frame.pointsValid || tracking.frame.valid) &&
             Number.isFinite(p.x) &&
@@ -96,7 +102,10 @@ export function TrackingScan({
     >
       <div className="scan-toolbar">
         <span>
-          <Sparkles size={15} /> THAT’S YOU!
+          <Sparkles size={15} />{" "}
+          {exercise === "reach"
+            ? `${(tracking.frame.arm ?? arm).toUpperCase()} ARM`
+            : "THAT’S YOU!"}
         </span>
         <span className="scan-state">
           <i />

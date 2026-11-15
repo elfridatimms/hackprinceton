@@ -6077,3 +6077,52 @@ input[type="range"] {
     bottom: 58px;
   }
 }
+/* A fixed elbow, shown before the single-arm Firefly attempt. */
+.reach-fixed-loop .firefly-forearm {
+  animation: quiet-arm-lift 5.5s ease-in-out infinite;
+}
+.reach-fixed-up .firefly-forearm {
+  animation: quiet-arm-up 2s ease-in-out both;
+}
+.reach-fixed-down .firefly-forearm {
+  animation: quiet-arm-down 2s ease-in-out both;
+}
+@keyframes quiet-arm-lift {
+  0%,
+  16%,
+  100% {
+    transform: rotate(0);
+  }
+  42%,
+  65% {
+    transform: rotate(-82deg);
+  }
+}
+@keyframes quiet-arm-up {
+  from {
+    transform: rotate(0);
+  }
+  to {
+    transform: rotate(-82deg);
+  }
+}
+@keyframes quiet-arm-down {
+  from {
+    transform: rotate(-82deg);
+  }
+  to {
+    transform: rotate(0);
+  }
+}
+.playing-arm-note {
+  font-size: 13px !important;
+  color: #77917d !important;
+}
+.reduced-motion .firefly-forearm {
+  animation: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .firefly-forearm {
+    animation: none !important;
+  }
+}

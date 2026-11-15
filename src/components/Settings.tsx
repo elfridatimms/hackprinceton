@@ -40,7 +40,7 @@ export function Settings({
     grip = draft.exercise === "grip",
     wrist = draft.exercise === "wrist",
     ship = draft.exercise === "ship",
-    handMode = grip || reach;
+    handMode = grip;
   const range = getMovementRange(draft);
   const valid = validMovementRange(draft.exercise, range.lower, range.upper);
   return (
@@ -172,7 +172,7 @@ export function Settings({
                 : grip
                   ? "The open hand level must be at least 0.2 above the closed level (0–5)."
                   : reach
-                    ? "Use two hand heights at least 0.08 apart within the camera picture (0–1)."
+                    ? "Use two forearm lift levels at least 0.18 apart (−1 to 1)."
                     : "Use a lower-position angle at least 5° larger than the upper-position angle (10–180°)."}
           </p>
         )}

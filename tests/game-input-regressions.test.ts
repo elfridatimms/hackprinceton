@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  cameraHandHeight,
+  handHeight,
   wristBend,
   forearmSteering,
 } from "../src/movement/exercises";
@@ -16,15 +16,19 @@ import type { Landmark, TrackingFrame } from "../src/movement/core";
 const pose = () =>
   Array.from({ length: 33 }, () => ({ x: 0.5, y: 0.5, visibility: 0.99 }));
 describe("Reported movement failures", () => {
-  it("maps a palm higher in the picture to a higher Firefly input without shoulders", () => {
-    const p = Array.from({ length: 21 }, () => ({ x: 0.5, y: 0.7 }));
-    p[9].y = 0.5;
-    expect(cameraHandHeight(p)).toBeCloseTo(0.3);
-    p[0].y = 0.3;
-    expect(cameraHandHeight(p)).toBeCloseTo(0.7);
-    p[0].y = -0.1;
-    expect(cameraHandHeight(p)).toBeNull();
-    expect(cameraHandHeight([])).toBeNull();
+  it("anchors Firefly to one elbow instead of absolute screen position", () => {
+    const p = pose();
+    p[14] = { x: 0.4, y: 0.6, visibility: 0.99 };
+    p[16] = { x: 0.65, y: 0.35, visibility: 0.99 };
+    expect(handHeight(p, "right", 1)).toBeCloseTo(Math.SQRT1_2);
+    const translated = p.map((point) => ({
+      ...point,
+      x: point.x - 0.1,
+      y: point.y - 0.1,
+    }));
+    expect(handHeight(translated, "right", 1)).toBeCloseTo(Math.SQRT1_2);
+    p[14].visibility = 0;
+    expect(handHeight(p, "right", 1)).toBeNull();
   });
   it("measures butterfly wrist bend relative to the forearm and is invariant to rotating the whole arm", () => {
     const p = pose(),

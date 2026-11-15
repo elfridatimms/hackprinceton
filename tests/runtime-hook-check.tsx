@@ -19,6 +19,8 @@ let recordedTilt = 0,
   targetTilt = 0;
 let recordedLift = 0,
   targetLift = 0;
+let hideOtherArm = false;
+let playingArm: "left" | "right" = "right";
 let image = new Image();
 image.src = new URL("./fixtures/right_hands.jpg", import.meta.url).href;
 const requestSource = async () => {
@@ -55,6 +57,17 @@ const requestSource = async () => {
         h * 0.8,
       );
       c.restore();
+      if (hideOtherArm && !image.src.includes("right_hands")) {
+        c.fillStyle = "#e2eadc";
+        if (playingArm === "right")
+          c.fillRect(
+            canvas.width * 0.62,
+            0,
+            canvas.width * 0.38,
+            canvas.height,
+          );
+        else c.fillRect(0, 0, canvas.width * 0.38, canvas.height);
+      }
     }
   };
   draw();
@@ -78,7 +91,7 @@ function Check() {
   useEffect(() => {
     image = new Image();
     image.src = new URL(
-      settings.exercise === "grip" || settings.exercise === "reach"
+      settings.exercise === "grip"
         ? "./fixtures/right_hands.jpg"
         : "./fixtures/pose.jpg",
       import.meta.url,
@@ -88,6 +101,7 @@ function Check() {
     targetLift = 0;
     recordedLift = 0;
   }, [settings.exercise]);
+  playingArm = settings.arm;
   const tracking = useTracking(
     settings.arm,
     requestSource,
@@ -165,6 +179,22 @@ function Check() {
         }}
       >
         Lower recorded hand
+      </button>
+      <button
+        className="button secondary"
+        style={{
+          position: "fixed",
+          top: 65,
+          right: 6,
+          zIndex: 120,
+          fontSize: 9,
+          padding: 6,
+        }}
+        onClick={() => {
+          hideOtherArm = !hideOtherArm;
+        }}
+      >
+        Toggle other-arm occlusion
       </button>
       <button className="button secondary" onClick={tracking.stop}>
         Stop source

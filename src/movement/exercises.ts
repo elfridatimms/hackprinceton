@@ -32,7 +32,7 @@ export const exercises = {
     up: childInstructions.reach.high,
     down: childInstructions.reach.low,
     camera:
-      "Show one hand to the camera. Lift and lower your hand in the picture.",
+      "Show the elbow and hand of your playing arm. Rest your elbow and gently lift that hand.",
   },
   elbow: {
     tab: "Dragon Flight",
@@ -74,34 +74,36 @@ export const exercises = {
       "Face the camera with your elbow bent and hand up. Keep the elbow in one place and turn your forearm left and right like a steering wheel.",
   },
 } as const;
-/** Wrist height relative to the selected shoulder, in shoulder-width units. This is a 2D game input, not a clinical measure. */
+/** Forearm lift relative to this arm's elbow, normalized by this forearm's
+ * projected length. Translation, camera distance and the other arm are absent. */
 export function handHeight(
   points: Landmark[],
   arm: Arm,
   aspect: number,
 ): number | null {
-  const left = points[11],
-    right = points[12],
+  const elbow = points[arm === "left" ? 13 : 14],
     wrist = points[arm === "left" ? 15 : 16];
   if (
-    ![left, right, wrist].every(usableLandmark) ||
     !Number.isFinite(aspect) ||
-    aspect <= 0
+    aspect <= 0 ||
+    ![elbow, wrist].every(usableLandmark)
   )
     return null;
-  const width = Math.hypot((left.x - right.x) * aspect, left.y - right.y);
-  if (width < 0.075) return null;
-  const shoulder = arm === "left" ? left : right;
-  const value = (shoulder.y - wrist.y) / width;
-  return Number.isFinite(value) && value >= -4 && value <= 4 ? value : null;
+  if ((elbow.visibility ?? 0) < 0.55 || (wrist.visibility ?? 0) < 0.55)
+    return null;
+  const dx = (wrist.x - elbow.x) * aspect,
+    dy = elbow.y - wrist.y,
+    length = Math.hypot(dx, dy);
+  if (length < 0.065) return null;
+  return clamp(dy / length, -1, 1);
 }
 export function validReachRange(lower: number, upper: number) {
   return (
     Number.isFinite(lower) &&
     Number.isFinite(upper) &&
-    lower >= -4 &&
-    upper <= 4 &&
-    upper - lower >= 0.12 - 1e-9
+    lower >= -1 &&
+    upper <= 1 &&
+    upper - lower >= 0.18 - 1e-9
   );
 }
 export function reachRange(first: number, second: number) {
@@ -124,12 +126,8 @@ export function movementValue(frame: TrackingFrame, exercise: Exercise) {
           : frame.angle;
 }
 export function reachTrackingMessage(points: Landmark[], arm: Arm) {
-  if (!points.length) return "Let’s see your shoulders and your waving hand.";
-  if (!usableLandmark(points[11]) || !usableLandmark(points[12]))
-    return "Face the camera so both shoulders can say hello.";
-  if (!usableLandmark(points[arm === "left" ? 15 : 16]))
-    return `Bring your ${arm} hand into the picture.`;
-  return "Face the camera and give yourself a little more room.";
+  const side = arm === "left" ? "left" : "right";
+  return `Show your ${side} elbow and hand. Luma will wait here.`;
 }
 
 /** Four fingertip distances / wrist-to-middle-knuckle distance. The thumb is not required to open fully. */
@@ -235,27 +233,7 @@ export function handSteering(
 }
 /** Points displayed by CameraFeed; wrist also includes posePoints for the forearm. */
 export const isHandExercise = (exercise: Exercise) =>
-  exercise === "grip" || exercise === "reach" || exercise === "wrist";
-/** Direct palm tracking needs no full-body pose or visible shoulders. */
-export function cameraHandHeight(points: Landmark[]): number | null {
-  const wrist = points[0],
-    middle = points[9];
-  if (
-    !wrist ||
-    !middle ||
-    ![wrist, middle].every(
-      (p) =>
-        Number.isFinite(p.x) &&
-        Number.isFinite(p.y) &&
-        p.x >= 0 &&
-        p.x <= 1 &&
-        p.y >= 0 &&
-        p.y <= 1,
-    )
-  )
-    return null;
-  return 1 - wrist.y;
-}
+  exercise === "grip" || exercise === "wrist";
 /** Forearm lean about the elbow in the mirrored picture. No wrist/palm rotation is required. */
 export function forearmSteering(
   points: Landmark[],
@@ -324,7 +302,7 @@ export const exerciseOrder: Exercise[] = [
 ];
 export const movementLimits = {
   grip: { min: 0, max: 5, delta: 0.2, spread: 0.16, precision: 1000 },
-  reach: { min: 0, max: 1, delta: 0.08, spread: 0.1, precision: 1000 },
+  reach: { min: -1, max: 1, delta: 0.18, spread: 0.08, precision: 1000 },
   elbow: { min: 10, max: 180, delta: 5, spread: 6, precision: 10 },
   wrist: { min: -90, max: 90, delta: 5, spread: 6, precision: 10 },
   ship: { min: -75, max: 75, delta: 5, spread: 6, precision: 10 },

@@ -22,7 +22,7 @@ export async function createVisionEngine(
   exercise: Exercise,
   signal?: AbortSignal,
 ): Promise<VisionEngine> {
-  if (exercise === "grip" || exercise === "reach") {
+  if (exercise === "grip") {
     const { FilesetResolver, HandLandmarker } =
       await import("@mediapipe/tasks-vision");
     const files = await FilesetResolver.forVisionTasks("/mediapipe/wasm");

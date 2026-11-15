@@ -97,6 +97,11 @@ export function Setup({
               <>
                 <h2 id="setup-title">Your turn!</h2>
                 <p>{instruction.camera}</p>
+                {settings.exercise === "reach" && (
+                  <p className="playing-arm-note">
+                    Following your <strong>{settings.arm} arm</strong>.
+                  </p>
+                )}
                 <p className="child-reassurance">{instruction.tip}</p>
                 <button
                   className="button primary full"
@@ -119,6 +124,26 @@ export function Setup({
               <summary>
                 Grown-up: movement options <ChevronDown size={13} />
               </summary>
+              {settings.exercise === "reach" && (
+                <div
+                  className="arm-choice"
+                  role="group"
+                  aria-label="Playing arm"
+                >
+                  {(["left", "right"] as const).map((arm) => (
+                    <button
+                      key={arm}
+                      className={settings.arm === arm ? "selected" : ""}
+                      onClick={() =>
+                        setSettings({ ...settings, arm, personalization: null })
+                      }
+                    >
+                      {arm === "left" ? "Left arm" : "Right arm"}
+                      {settings.arm === arm && <Check size={13} />}
+                    </button>
+                  ))}
+                </div>
+              )}
               <div
                 className="exercise-choices"
                 role="group"

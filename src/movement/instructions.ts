@@ -12,9 +12,9 @@ export const childInstructions = {
   reach: {
     low: "Put your hand down.",
     high: "Lift your hand a little.",
-    camera: "Show one hand to the camera.",
-    help: "Keep your wrist and fingers in the picture. Lift and lower your hand.",
-    tip: "A little lift is enough.",
+    camera: "Show your playing elbow and hand.",
+    help: "Rest your elbow. Lift and lower the hand of the same arm. Your other arm can rest.",
+    tip: "Keep your elbow in one place. A little lift is enough.",
     goal: "Let’s catch a firefly!",
   },
   elbow: {

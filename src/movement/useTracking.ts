@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { PersonalProfile } from "./personalization";
+import { ReachStability } from "./reach";
 import { MovementFilter } from "./filter";
 import {
   createVisionEngine,
@@ -9,7 +10,8 @@ import {
 } from "./trackerEngine";
 import {
   handOpenness,
-  cameraHandHeight,
+  handHeight,
+  reachTrackingMessage,
   wristBend,
   forearmSteering,
   type Exercise,
@@ -53,7 +55,7 @@ export function useTracking(
     [error, setError] = useState(""),
     [frame, setFrame] = useState<TrackingFrame>(EMPTY);
   const diagnostics = useRef<TrackingDiagnostics>({
-    build: "isolated-tracking-9",
+    build: "anchored-firefly-10",
     stage: "Camera off",
     engine: "—",
     video: "—",
@@ -75,24 +77,32 @@ export function useTracking(
     playingHand = useRef(new PlayingHand()),
     missingSince = useRef<number | null>(null);
   const filter = useRef(new MovementFilter());
+  const reachStability = useRef(new ReachStability());
   useEffect(() => {
     // Filter both preview/practice and play; raw pose used to be unfiltered before calibration.
-    const p = profile?.exercise === exercise ? profile : null;
+    const p =
+      profile?.exercise === exercise && profile.arm === arm ? profile : null;
     const angle =
       exercise === "elbow" || exercise === "ship" || exercise === "wrist";
     filter.current.configure(
-      p?.signalTau ?? (angle ? 0.12 : 0.1),
-      p?.signalDeadband ?? (angle ? 0.3 : exercise === "grip" ? 0.012 : 0.003),
+      exercise === "reach"
+        ? Math.max(0.18, p?.signalTau ?? 0.2)
+        : (p?.signalTau ?? (angle ? 0.12 : 0.1)),
+      exercise === "reach"
+        ? Math.max(0.025, p?.signalDeadband ?? 0.025)
+        : (p?.signalDeadband ?? (angle ? 0.3 : 0.012)),
     );
     filter.current.reset();
+    reachStability.current.reset();
     setFrame(EMPTY);
   }, [profile, exercise, arm]);
   useEffect(() => {
     activeArm.current = null;
+    reachStability.current.reset();
     setFrame({
       ...EMPTY,
       message:
-        exercise === "reach" || exercise === "grip"
+        exercise === "grip"
           ? "Show one hand to the camera."
           : "Show your arm to the camera.",
     });
@@ -117,6 +127,7 @@ export function useTracking(
     playingHand.current.reset();
     missingSince.current = null;
     filter.current.reset();
+    reachStability.current.reset();
     diagnostics.current.stage = "Camera off";
     setFrame(EMPTY);
     setStatus("off");
@@ -130,7 +141,7 @@ export function useTracking(
     setStatus("loading");
     setError("");
     diagnostics.current = {
-      build: "isolated-tracking-9",
+      build: "anchored-firefly-10",
       stage: "Waiting for camera permission",
       engine: "—",
       video: "—",
@@ -210,10 +221,12 @@ export function useTracking(
             diagnostics.current.frames++;
             const pose = observation.pose;
             if (!activeArm.current)
-              activeArm.current = preferredArm(pose, current.current.arm);
+              activeArm.current =
+                activeExercise === "reach"
+                  ? current.current.arm
+                  : preferredArm(pose, current.current.arm);
             const side = activeArm.current ?? current.current.arm;
-            const handMode =
-              activeExercise === "grip" || activeExercise === "reach";
+            const handMode = activeExercise === "grip";
             const hand = handMode
               ? playingHand.current.select(observation.hands)
               : observation.hands.find((h) => h.label.toLowerCase() === side);
@@ -226,13 +239,22 @@ export function useTracking(
               activeExercise === "grip"
                 ? handOpenness(points, aspect)
                 : activeExercise === "reach"
-                  ? cameraHandHeight(points)
+                  ? handHeight(pose, side, aspect)
                   : activeExercise === "wrist"
                     ? wristBend(pose, points, side, aspect)
                     : activeExercise === "ship"
                       ? forearmSteering(pose, side, aspect)
                       : elbowAngle(pose, side, aspect);
-            const value = filter.current.update(timely ? rawValue : null, at);
+            const confirmed =
+              activeExercise === "reach"
+                ? reachStability.current.update(
+                    timely ? rawValue : null,
+                    started,
+                  )
+                : timely
+                  ? rawValue
+                  : null;
+            const value = filter.current.update(confirmed, at);
             if (value === null) {
               if (missingSince.current === null) missingSince.current = at;
               // Reacquire after a genuine absence, without trusting a flickering handedness label.
@@ -242,11 +264,13 @@ export function useTracking(
             const valid = value !== null && timely;
             const missing = handMode
               ? "Keep your playing hand in the picture."
-              : activeExercise === "wrist"
-                ? "Show your hand and elbow from the side. Rest your forearm."
-                : activeExercise === "ship"
-                  ? "Keep your elbow and hand in view. Fingers can stay relaxed."
-                  : "Keep your shoulder, elbow and hand in view.";
+              : activeExercise === "reach"
+                ? reachTrackingMessage(pose, side)
+                : activeExercise === "wrist"
+                  ? "Show your hand and elbow from the side. Rest your forearm."
+                  : activeExercise === "ship"
+                    ? "Keep your elbow and hand in view. Fingers can stay relaxed."
+                    : "Keep your shoulder, elbow and hand in view.";
             diagnostics.current.stage = valid
               ? "Following your movement"
               : missing;
@@ -267,7 +291,9 @@ export function useTracking(
               message: !timely
                 ? "The camera is taking a moment."
                 : valid
-                  ? "I’m following you!"
+                  ? activeExercise === "reach"
+                    ? `I’m following your ${side} arm.`
+                    : "I’m following you!"
                   : missing,
             });
           } else if (

@@ -23,7 +23,7 @@ describe("MediaPipe engine selection and repository settings", () => {
   afterEach(() => {
     vi.clearAllMocks();
   });
-  it.each(["elbow", "ship", "wrist"] as const)(
+  it.each(["elbow", "ship", "wrist", "reach"] as const)(
     "uses the reference Holistic engine with smoothing for %s",
     async (exercise) => {
       let callback: (r: object) => void = () => {};
@@ -75,7 +75,7 @@ describe("MediaPipe engine selection and repository settings", () => {
       });
     },
   );
-  it.each(["reach", "grip"] as const)(
+  it.each(["grip"] as const)(
     "uses direct hand detection for %s without requiring a body",
     async (exercise) => {
       vision.resolve.mockResolvedValue({});

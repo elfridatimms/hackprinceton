@@ -198,19 +198,49 @@ describe("Camera lifecycle and fresh movement observations", () => {
     expect(engine.create).not.toHaveBeenCalled();
     expect(tracking.frame.valid).toBe(false);
   });
-  it("tracks Firefly directly from a hand without shoulders or a body pose", async () => {
+  it("locks Firefly to the selected arm and ignores the other arm's visibility", async () => {
     exercise = "reach";
-    engine.detect.mockResolvedValue({
-      pose: [],
-      hands: [{ points: hand(), label: "Right", score: 0.9 }],
-    });
+    const pose = armPose();
+    engine.detect.mockResolvedValue({ pose, hands: [] });
     act(() => root.render(<Probe />));
     await act(async () => {
       await tracking.start();
     });
+    for (let i = 0; i < 4; i++) {
+      time++;
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(80);
+      });
+    }
     expect(tracking.frame.valid).toBe(true);
-    expect(tracking.frame.height).toBeCloseTo(0.2);
-    expect(tracking.frame.angle).toBeNull();
+    expect(tracking.frame.height).toBeCloseTo(0);
+    expect(tracking.frame.arm).toBe("right");
+    expect(tracking.frame.points).toHaveLength(33);
+    [11, 13, 15].forEach((i) => (pose[i] = { x: 0.1, y: 0.1, visibility: 1 }));
+    time++;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(80);
+    });
+    expect(tracking.frame.valid).toBe(true);
+    expect(tracking.frame.height).toBeCloseTo(0);
+    expect(tracking.frame.arm).toBe("right");
+    pose[16].visibility = 0;
+    time++;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(80);
+    });
+    expect(tracking.frame.valid).toBe(false);
+    expect(tracking.frame.height).toBeNull();
+    expect(tracking.frame.arm).toBe("right");
+    pose[16].visibility = 0.9;
+    for (let i = 0; i < 5; i++) {
+      time++;
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(80);
+      });
+    }
+    expect(tracking.frame.valid).toBe(true);
+    expect(tracking.frame.arm).toBe("right");
   });
   it("keeps following the same spatial hand when its label flickers", async () => {
     exercise = "grip";

@@ -1,3 +1,5 @@
+import { FireflyCatch } from "./FireflyCatch";
+import { fireflyHeight } from "./fireflyControl";
 import { SkyGates } from "./SkyGates";
 import { PirateBay } from "./PirateBay";
 import type { Exercise } from "../movement/exercises";
@@ -390,7 +392,7 @@ function Fireflies({
     previousPhase.current = w.phase;
     groups.current?.children.forEach((g, i) => {
       const f = flies[i];
-      if (!welcome && w.exercise !== "reach") {
+      if (!welcome || w.exercise === "reach") {
         g.visible = false;
         return;
       }
@@ -497,7 +499,11 @@ function CollectionSparkles({ world }: { world: React.RefObject<WorldState> }) {
     particles.current!.visible = age >= 0 && age < 0.65;
     particles.current!.position.set(
       w.exercise === "wrist" ? -3 + w.position * 6 : -2.8,
-      w.exercise === "wrist" ? 0.3 + w.position * 2.8 : -0.4 + w.position * 4.2,
+      w.exercise === "wrist"
+        ? 0.3 + w.position * 2.8
+        : w.exercise === "reach"
+          ? fireflyHeight(w.position, w.reachTravel) + 0.28
+          : -0.4 + w.position * 4.2,
       w.exercise === "wrist" ? 4.4 : 3,
     );
     particles.current!.children.forEach((child, i) => {
@@ -696,6 +702,7 @@ function Scenery({
       <CollectionSparkles world={world} />
       <Dragon world={world} welcome={welcome} />
       <Fireflies world={world} welcome={welcome} onCollect={onCollect} />
+      <FireflyCatch world={world} welcome={welcome} onCollect={onCollect} />
       <group ref={foliage}>
         {[-11, -10, -8.8, 9.7, 11.3, 12].map((x, i) => (
           <Tree

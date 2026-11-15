@@ -57,11 +57,7 @@ export function CameraFeed({
           ctx.drawImage(vid, 0, 0, c.width, c.height);
           const frame = frameRef.current;
           if (performance.now() - frame.at < FRAME_MAX_AGE_MS) {
-            if (
-              exercise === "grip" ||
-              exercise === "wrist" ||
-              exercise === "reach"
-            ) {
+            if (exercise === "grip" || exercise === "wrist") {
               if (frame.valid || (scan && frame.pointsValid)) {
                 if (exercise === "wrist" && frame.posePoints) {
                   const elbow =
@@ -135,44 +131,55 @@ export function CameraFeed({
               }
             } else {
               const left = (frame.arm ?? arm) === "left";
-              const pairs = scan
-                ? [
-                    [11, 12],
-                    [11, 13],
-                    [13, 15],
-                    [15, 17],
-                    [15, 19],
-                    [17, 19],
-                    [15, 21],
-                    [12, 14],
-                    [14, 16],
-                    [16, 18],
-                    [16, 20],
-                    [18, 20],
-                    [16, 22],
-                    [11, 23],
-                    [12, 24],
-                    [23, 24],
-                    [23, 25],
-                    [25, 27],
-                    [27, 29],
-                    [29, 31],
-                    [27, 31],
-                    [24, 26],
-                    [26, 28],
-                    [28, 30],
-                    [30, 32],
-                    [28, 32],
-                  ]
-                : left
-                  ? [
-                      [11, 13],
-                      [13, 15],
-                    ]
-                  : [
-                      [12, 14],
-                      [14, 16],
-                    ];
+              const pairs =
+                exercise === "reach"
+                  ? left
+                    ? [
+                        [11, 13],
+                        [13, 15],
+                      ]
+                    : [
+                        [12, 14],
+                        [14, 16],
+                      ]
+                  : scan
+                    ? [
+                        [11, 12],
+                        [11, 13],
+                        [13, 15],
+                        [15, 17],
+                        [15, 19],
+                        [17, 19],
+                        [15, 21],
+                        [12, 14],
+                        [14, 16],
+                        [16, 18],
+                        [16, 20],
+                        [18, 20],
+                        [16, 22],
+                        [11, 23],
+                        [12, 24],
+                        [23, 24],
+                        [23, 25],
+                        [25, 27],
+                        [27, 29],
+                        [29, 31],
+                        [27, 31],
+                        [24, 26],
+                        [26, 28],
+                        [28, 30],
+                        [30, 32],
+                        [28, 32],
+                      ]
+                    : left
+                      ? [
+                          [11, 13],
+                          [13, 15],
+                        ]
+                      : [
+                          [12, 14],
+                          [14, 16],
+                        ];
               ctx.strokeStyle = scan ? "#8df4da" : "#ffdf8b";
               ctx.lineWidth = scan ? Math.max(3, c.width / 230) : 5;
               ctx.lineCap = "round";
@@ -402,7 +409,8 @@ export function InputPanel({
                       : exercise === "grip"
                         ? "One playing hand · palm to camera"
                         : exercise === "reach"
-                          ? "One hand · lift and lower in the picture"
+                          ? (arm === "left" ? "Left" : "Right") +
+                            " arm only · elbow and hand in view"
                           : (arm === "left" ? "Left" : "Right") +
                             " arm · side-on view"}
                 </p>

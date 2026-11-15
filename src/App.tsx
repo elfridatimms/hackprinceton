@@ -68,7 +68,7 @@ export default function App() {
       const { personalization: _sessionOnly, ...preferences } = settings;
       localStorage.setItem(
         "luma-settings",
-        JSON.stringify({ ...preferences, inputVersion: 2 }),
+        JSON.stringify({ ...preferences, inputVersion: 3 }),
       );
     } catch {}
     audio.mute(settings.muted);
@@ -452,7 +452,7 @@ export default function App() {
                 <span />{" "}
                 {session.mode === "demo"
                   ? "Keyboard & slider"
-                  : ["grip", "reach"].includes(settings.exercise)
+                  : settings.exercise === "grip"
                     ? "One playing hand"
                     : settings.arm + " arm"}
               </span>
@@ -553,21 +553,21 @@ export default function App() {
                         ? "✦ SKY GATE ADVENTURE"
                         : settings.exercise === "wrist"
                           ? "✿ NECTAR GARDEN"
-                          : "✧ FIREFLY CHASE"}
+                          : "✧ ONE LITTLE LIGHT"}
                     </span>
                     <strong>
                       {settings.exercise === "elbow"
                         ? "Fly through the glowing gaps!"
                         : settings.exercise === "wrist"
                           ? "Visit the glowing flowers!"
-                          : "Catch the little lights!"}
+                          : "Lift gently. Catch one light."}
                     </strong>
                     <small>
                       {settings.exercise === "elbow"
                         ? "Bend to rise. Lower to glide."
                         : settings.exercise === "wrist"
                           ? "Tilt your hand. Flutter between flowers."
-                          : "Lift and lower your hand. Luma follows."}
+                          : "Rest your elbow. Lift the same hand."}
                     </small>
                   </div>
                 )}
@@ -630,7 +630,7 @@ export default function App() {
                           : settings.exercise === "grip"
                             ? "Show your palm and fingertips to the camera."
                             : settings.exercise === "reach"
-                              ? "Keep your wrist and fingers in the picture."
+                              ? "Keep your playing elbow and hand in the picture."
                               : "Bring your shoulder, elbow, and wrist into view."}
                     </span>
                     {tracking.status !== "on" && (
@@ -797,12 +797,12 @@ export default function App() {
                 {session.mode === "demo"
                   ? "Demo input"
                   : session.waiting
-                    ? ["grip", "reach"].includes(settings.exercise)
+                    ? settings.exercise === "grip"
                       ? "Finding your hand"
                       : "Finding your arm"
                     : settings.personalization
                       ? "Personal scan ready"
-                      : ["grip", "reach"].includes(settings.exercise)
+                      : settings.exercise === "grip"
                         ? "Hand in view"
                         : "Arm in view"}
               </div>
