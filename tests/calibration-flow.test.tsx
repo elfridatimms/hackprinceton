@@ -193,6 +193,26 @@ describe("The short camera start without comfy-spot screens", () => {
       }),
     );
   });
+  it("starts Firefly after observed up-and-back positions despite brief tracking gaps, without a repetition sticker", () => {
+    settings = { ...settings, exercise: "reach" };
+    render();
+    watch();
+    click("Let’s play!");
+    frames(-0.5);
+    frames(-0.5, false, 1);
+    frames(0.5);
+    frames(0.5, false, 1);
+    frames(-0.5);
+    expect(host.textContent).toContain("Your arm is ready.");
+    expect(host.querySelector(".practice-stickers")).toBeNull();
+    act(() => vi.advanceTimersByTime(1000));
+    expect(reset).toHaveBeenCalledWith("playing");
+    expect(save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        personalization: expect.objectContaining({ cycles: 0 }),
+      }),
+    );
+  });
   it("does not turn standing still or missing tracking into a completed movement", () => {
     watch();
     click("Let’s play!");

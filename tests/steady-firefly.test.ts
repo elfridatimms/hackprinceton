@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { handHeight } from "../src/movement/exercises";
+import { QuickPracticeCapture } from "../src/movement/quickPractice";
 import { ReachStability } from "../src/movement/reach";
 import { MovementFilter } from "../src/movement/filter";
 import {
@@ -130,5 +131,50 @@ describe("A calm vertical flight lane", () => {
     expect(goal.position).toBe(0.9);
     for (let i = 0; i < 5; i++) if (goal.update(0.9, 0.04, true)) n++;
     expect(n).toBe(2);
+  });
+});
+
+describe("Firefly setup across brief gaps", () => {
+  it("remembers observed positions without inventing a continuous repetition", () => {
+    const c = new QuickPracticeCapture("reach");
+    let at = 0;
+    const hold = (height: number, valid = true, n = 10) => {
+      for (let i = 0; i < n; i++) {
+        at += 80;
+        c.update(
+          { valid, angle: null, height, at, points: [], message: "" },
+          at,
+        );
+      }
+    };
+    hold(-0.5);
+    hold(-0.5, false, 1);
+    hold(0.5);
+    expect(c.phase).toBe("return-low");
+    expect(c.profile("right", at)).toBeNull();
+    hold(0.5, false, 1);
+    hold(-0.5);
+    expect(c.profile("right", at)).toMatchObject({
+      cycles: 0,
+      lower: -0.5,
+      upper: 0.5,
+    });
+  });
+  it("does not fit a range from disappearance or a partial movement", () => {
+    const c = new QuickPracticeCapture("reach");
+    let at = 0;
+    for (const [height, valid] of [
+      [-0.5, true],
+      [0.5, true],
+      [0.5, false],
+    ] as const)
+      for (let i = 0; i < 10; i++) {
+        at += 80;
+        c.update(
+          { valid, angle: null, height, at, points: [], message: "" },
+          at,
+        );
+      }
+    expect(c.profile("right", at)).toBeNull();
   });
 });

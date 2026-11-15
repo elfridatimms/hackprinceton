@@ -17,10 +17,17 @@ export class QuickPracticeCapture {
   range: { lower: number; upper: number } | null = null;
   motion = new PersonalMotionCapture();
   private lastAt: number | null = null;
+  private gapsAfter = new Set<number>();
   constructor(readonly exercise: Exercise) {}
   invalidate() {
     this.motion.counter.invalidate();
-    this.samples = [];
+    if (this.exercise === "reach") {
+      const last = this.samples.at(-1);
+      if (last) this.gapsAfter.add(last.at);
+    } else {
+      this.samples = [];
+      this.gapsAfter.clear();
+    }
   }
   update(frame: TrackingFrame, now: number) {
     const value = movementValue(frame, this.exercise),
@@ -62,7 +69,10 @@ export class QuickPracticeCapture {
     this.range = range;
     this.motion = new PersonalMotionCapture();
     // Replay only the real, timestamped observations already seen during this attempt.
+    let previousAt: number | null = null;
     for (const sample of this.samples) {
+      if (previousAt !== null && this.gapsAfter.has(previousAt))
+        this.motion.counter.invalidate();
       const f: TrackingFrame = {
         valid: true,
         angle: this.exercise === "elbow" ? sample.value : null,
@@ -76,7 +86,54 @@ export class QuickPracticeCapture {
         message: "",
       };
       this.motion.update(f, this.exercise, range, sample.at);
+      previousAt = sample.at;
     }
+  }
+  /** Calibration can retain observed endpoint holds across gaps. It never
+   * turns those gaps into a completed repetition. Each hold still needs five
+   * distinct, consecutive good observations over at least 220 ms. */
+  private observedStage() {
+    if (!this.range) return 0;
+    let stage = 0,
+      count = 0,
+      since: number | null = null,
+      previous: number | null = null;
+    for (const sample of this.samples) {
+      if (
+        previous !== null &&
+        (this.gapsAfter.has(previous) ||
+          sample.at - previous > FRAME_MAX_AGE_MS)
+      ) {
+        count = 0;
+        since = null;
+      }
+      const p =
+        (sample.value - this.range.lower) /
+        (this.range.upper - this.range.lower);
+      const reached = stage === 1 ? p >= 0.8 : p <= 0.2;
+      if (reached) {
+        count++;
+        since ??= sample.at;
+        if (count >= 5 && sample.at - since >= 220) {
+          stage++;
+          count = 0;
+          since = null;
+          if (stage === 3) return 3;
+        }
+      } else {
+        count = 0;
+        since = null;
+      }
+      previous = sample.at;
+    }
+    return stage;
+  }
+  get phase(): "seek-low" | "seek-high" | "return-low" {
+    return this.exercise === "reach"
+      ? (["seek-low", "seek-high", "return-low", "return-low"] as const)[
+          this.observedStage()
+        ]
+      : this.motion.counter.phase;
   }
   position(frame: TrackingFrame, now: number) {
     const v = movementValue(frame, this.exercise);
@@ -89,7 +146,12 @@ export class QuickPracticeCapture {
       : null;
   }
   profile(arm: Arm, now: number) {
-    if (!this.range || this.motion.counter.count < 1) return null;
+    if (
+      !this.range ||
+      (this.motion.counter.count < 1 &&
+        !(this.exercise === "reach" && this.observedStage() === 3))
+    )
+      return null;
     const min = Math.min(this.range.lower, this.range.upper),
       max = Math.max(this.range.lower, this.range.upper),
       band = (max - min) * 0.2;
@@ -109,7 +171,7 @@ export class QuickPracticeCapture {
       holds,
       this.motion.counter.count,
       now,
-      1,
+      this.exercise === "reach" ? 0 : 1,
     );
   }
 }

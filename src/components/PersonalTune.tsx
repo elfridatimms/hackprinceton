@@ -57,7 +57,7 @@ export function PersonalTune({
     return () => clearTimeout(timer);
   }, [profile]);
   const learned = capture.current.range,
-    phase = capture.current.motion.counter.phase;
+    phase = capture.current.phase;
   const position =
     fresh && value !== null
       ? clamp(
@@ -122,7 +122,13 @@ export function PersonalTune({
               </div>
             )}
           </div>
-          <PracticeStickers count={profile ? 1 : 0} total={1} />
+          {exercise === "reach" ? (
+            <p className="small" role="status">
+              {profile ? "Your arm is ready." : "Your elbow stays in view."}
+            </p>
+          ) : (
+            <PracticeStickers count={profile ? 1 : 0} total={1} />
+          )}
         </div>
       </div>
       {profile && (
@@ -146,12 +152,21 @@ export function PersonalTune({
       </button>
       <details className="grownup-fold personal-explanation">
         <summary>Grown-up help</summary>
-        <p>
-          The range and steadiness are learned from one complete movement during
-          this attempt. No separate endpoint capture is needed. Missing or stale
-          observations cannot complete it. This calibrates game input; MediaPipe
-          remains pretrained.
-        </p>
+        {exercise === "reach" && (
+          <p>
+            Firefly remembers stable positions already observed during this
+            attempt, even across brief gaps. Those gaps never count as a
+            completed repetition. The playing arm stays locked.
+          </p>
+        )}
+        {exercise !== "reach" && (
+          <p>
+            The range and steadiness are learned from one complete movement
+            during this attempt. No separate endpoint capture is needed. Missing
+            or stale observations cannot complete it. This calibrates game
+            input; MediaPipe remains pretrained.
+          </p>
+        )}
         <button
           className="text-button"
           disabled={!fresh}
